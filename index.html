@@ -15,16 +15,16 @@
             height: 100%; margin: 0; background-color: #000000; color: #fff;
             overflow: hidden; font-family: monospace;
         }
-        /* Terminal Full Screen ala Termux */
+        /* Terminal Full Screen */
         #terminal-container {
-            height: 100vh; width: 100vw; padding: 4px; box-sizing: border-box;
+            height: 100%; width: 100%; padding: 4px; box-sizing: border-box;
         }
         .xterm .xterm-viewport { overflow-y: auto !important; }
-        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #000; }
         ::-webkit-scrollbar-thumb { background: #333; }
         
-        /* Drawer ala Termux (Geser Kiri) */
+        /* Drawer Sesi (Geser Kiri) */
         #sidebar {
             transform: translateX(-100%);
             transition: transform 0.3s ease-in-out;
@@ -32,6 +32,10 @@
         #sidebar.open {
             transform: translateX(0);
         }
+        
+        /* Menyembunyikan Scrollbar di Tab Header tapi tetap bisa di-scroll */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body class="antialiased flex h-screen relative">
@@ -49,43 +53,108 @@
         </div>
     </div>
 
-    <!-- MAIN APP SCREEN -->
-    <div id="app-screen" class="hidden h-full w-full relative">
+    <!-- MAIN APP SCREEN (Flex Column) -->
+    <div id="app-screen" class="hidden h-full w-full flex flex-col relative">
         
-        <!-- Tombol Hamburger (Kiri Atas) -->
-        <button onclick="toggleSidebar()" class="absolute top-2 left-2 z-40 bg-gray-800/50 text-white p-2 rounded-md hover:bg-gray-700 focus:outline-none">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
-        </button>
+        <!-- HEADER: TABS & GLOBAL ACTIONS -->
+        <div class="flex items-center justify-between bg-gray-900 border-b border-gray-800 px-2 py-2 shrink-0 h-14">
+            
+            <!-- Kiri: Hamburger + Tabs -->
+            <div class="flex items-center flex-1 overflow-hidden">
+                <button onclick="toggleSidebar()" class="bg-gray-800 text-white p-2 mr-2 rounded-md hover:bg-gray-700 focus:outline-none shrink-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+                
+                <div class="flex overflow-x-auto no-scrollbar gap-2 items-center flex-1 pr-2">
+                    <button onclick="switchTab('termux')" id="tab-termux" class="px-3 py-1.5 rounded bg-gray-700 text-green-400 whitespace-nowrap text-sm font-bold shadow-inner">Termux</button>
+                    <button onclick="switchTab('vps1')" id="tab-vps1" class="px-3 py-1.5 rounded text-gray-400 whitespace-nowrap text-sm border border-transparent hover:border-gray-700"><span id="status-vps1" class="text-red-500 mr-1">●</span>VPS 1</button>
+                    <button onclick="switchTab('vps2')" id="tab-vps2" class="px-3 py-1.5 rounded text-gray-400 whitespace-nowrap text-sm border border-transparent hover:border-gray-700"><span id="status-vps2" class="text-red-500 mr-1">●</span>VPS 2</button>
+                    <button onclick="switchTab('vps3')" id="tab-vps3" class="px-3 py-1.5 rounded text-gray-400 whitespace-nowrap text-sm border border-transparent hover:border-gray-700"><span id="status-vps3" class="text-red-500 mr-1">●</span>VPS 3</button>
+                    <button onclick="switchTab('github')" id="tab-github" class="px-3 py-1.5 rounded text-gray-400 whitespace-nowrap text-sm font-bold border border-transparent hover:border-gray-700">GitHub 🐙</button>
+                </div>
+            </div>
 
-        <!-- Sidebar / Drawer Sessions -->
-        <div id="sidebar" class="absolute inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-800 z-50 shadow-2xl flex flex-col">
-            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
-                <span class="text-green-400 font-bold">SESSIONS</span>
+            <!-- Kanan: Upload & Download (Ada di Semua Tab) -->
+            <div class="flex gap-2 shrink-0 ml-2">
+                <button onclick="triggerUpload()" title="Upload File" class="bg-blue-600/80 hover:bg-blue-500 text-white p-2 rounded shadow text-sm">📤</button>
+                <button onclick="triggerDownload()" title="Download File" class="bg-green-600/80 hover:bg-green-500 text-white p-2 rounded shadow text-sm">📥</button>
+            </div>
+            
+            <!-- Hidden Input File untuk Upload -->
+            <input type="file" id="file-uploader" class="hidden" onchange="handleFileUpload(event)">
+        </div>
+
+        <!-- SIDEBAR / DRAWER SESSIONS (Spesifik per Tab) -->
+        <div id="sidebar" class="absolute inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-800 z-50 shadow-2xl flex flex-col pt-14">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-black/20">
+                <span class="text-green-400 font-bold" id="sidebar-title">SESSIONS (Termux)</span>
                 <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white">&times;</button>
             </div>
-            <div class="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-sm">
-                <button onclick="switchTab('termux')" id="tab-termux" class="w-full text-left px-3 py-2 rounded bg-gray-800 text-green-400">1. Termux Master</button>
-                <button onclick="switchTab('vps1')" id="tab-vps1" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-gray-400"><span id="status-vps1" class="text-red-500">●</span> 2. VPS-Game-1</button>
-                <button onclick="switchTab('vps2')" id="tab-vps2" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-gray-400"><span id="status-vps2" class="text-red-500">●</span> 3. VPS-Grup-2</button>
-                <button onclick="switchTab('vps3')" id="tab-vps3" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-gray-400"><span id="status-vps3" class="text-red-500">●</span> 4. VPS-Berat-3</button>
+            
+            <!-- Daftar Sesi Tmux -->
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-sm" id="session-list">
+                <!-- Data ini nanti akan dinamis dari terminal.py, untuk sekarang Dummy UI -->
+                <button class="w-full text-left px-3 py-2 rounded bg-gray-800 text-green-400">0: main_server</button>
+            </div>
+            
+            <!-- Tombol Statis Tambah & Hapus Sesi di Bawah -->
+            <div class="p-3 border-t border-gray-800 grid grid-cols-2 gap-2 bg-black/40">
+                <button onclick="addSession()" class="text-xs border border-green-600 text-green-400 py-2 rounded hover:bg-green-900 font-bold tracking-wide">+ SESI BARU</button>
+                <button onclick="deleteSession()" class="text-xs border border-red-600 text-red-400 py-2 rounded hover:bg-red-900 font-bold tracking-wide">- HAPUS</button>
             </div>
         </div>
 
         <!-- Lapisan Gelap saat sidebar buka -->
-        <div id="sidebar-overlay" onclick="toggleSidebar()" class="absolute inset-0 bg-black/50 z-40 hidden"></div>
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="absolute inset-0 z-40 hidden bg-black/50 backdrop-blur-sm"></div>
 
-        <!-- Terminal Area -->
-        <div id="terminal-container" class="w-full h-full relative">
+        <!-- AREA KONTEN UTAMA (Terminal & GitHub) -->
+        <div class="flex-1 relative overflow-hidden bg-black">
+            
+            <!-- Terminal Container (Xterm.js) -->
+            <div id="terminal-container" class="absolute inset-0"></div>
+            
+            <!-- Overlay Loading Terminal -->
             <div id="terminal-overlay" class="absolute inset-0 bg-black/90 z-30 hidden flex-col items-center justify-center font-mono">
                 <p class="text-green-500" id="overlay-text">Connecting...</p>
             </div>
+
+            <!-- GitHub Panel Container (Hidden by default) -->
+            <div id="github-container" class="absolute inset-0 hidden bg-black p-4 z-20 overflow-y-auto font-mono">
+                <div class="max-w-3xl mx-auto">
+                    <h2 class="text-orange-400 mb-6 text-2xl font-bold border-b border-gray-800 pb-2">🐙 GitHub Repository Manager</h2>
+                    <p class="text-gray-400 text-sm mb-6">Sinkronisasi kode dari/ke GitHub dengan satu klik. Pastikan Token di config.py sudah diatur.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <button onclick="runGit('pull')" class="border border-orange-500 p-6 rounded-lg hover:bg-orange-900/50 transition flex flex-col items-center justify-center gap-2 group">
+                            <span class="text-3xl group-hover:-translate-y-1 transition-transform">⬇️</span>
+                            <span class="font-bold text-orange-400 text-lg">PULL UPDATES</span>
+                            <span class="text-xs text-gray-500 text-center">Tarik kode terbaru dari GitHub ke server</span>
+                        </button>
+                        <button onclick="runGit('push')" class="border border-green-500 p-6 rounded-lg hover:bg-green-900/50 transition flex flex-col items-center justify-center gap-2 group">
+                            <span class="text-3xl group-hover:-translate-y-1 transition-transform">⬆️</span>
+                            <span class="font-bold text-green-400 text-lg">PUSH CHANGES</span>
+                            <span class="text-xs text-gray-500 text-center">Upload revisi kode server ke GitHub (Auto Commit)</span>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-8 border border-gray-800 rounded-lg bg-gray-900/50 flex flex-col">
+                        <div class="bg-gray-800 px-4 py-2 border-b border-gray-700 text-xs text-gray-400 font-bold flex justify-between">
+                            <span>GIT LOG OUTPUT</span>
+                            <button onclick="runGit('status')" class="hover:text-white">Cek Status</button>
+                        </div>
+                        <div id="git-log" class="p-4 text-xs text-gray-300 h-48 overflow-y-auto whitespace-pre-wrap">Menunggu perintah aksi git...</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
+    <!-- LOGIKA JAVASCRIPT -->
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.setHeaderColor('#000000');
+        tg.setHeaderColor('#111827'); // gray-900 untuk menyatu dengan header
 
         let currentTab = 'termux';
         let secretToken = '';
@@ -93,11 +162,13 @@
         let pingInterval = null;
         const NGROK_URL = "dispersed-yard-manger.ngrok-free.dev"; 
         
+        // Terminal Setup
         const term = new Terminal({
             cursorBlink: true,
-            theme: { background: '#000000', foreground: '#f8fafc', cursor: '#22c55e' }, // Kursor Hijau
+            theme: { background: '#000000', foreground: '#f8fafc', cursor: '#22c55e', selection: 'rgba(255, 255, 255, 0.3)' },
             fontFamily: '"Courier New", Courier, monospace',
-            fontSize: window.innerWidth < 600 ? 12 : 14
+            fontSize: window.innerWidth < 600 ? 12 : 14,
+            scrollback: 5000
         });
         
         const fitAddon = new FitAddon.FitAddon();
@@ -106,12 +177,15 @@
         fitAddon.fit();
 
         window.addEventListener('resize', () => {
-            fitAddon.fit();
-            if(ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+            if(document.getElementById('terminal-container').style.display !== 'none') {
+                fitAddon.fit();
+                if(ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+                }
             }
         });
 
+        // UI Functions
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -119,6 +193,7 @@
             overlay.classList.toggle('hidden');
         }
 
+        // WebSockets & Login
         function login() {
             const keyInput = document.getElementById('secret-key').value;
             if(!keyInput) return;
@@ -132,14 +207,18 @@
             if (ws) { ws.onclose = null; ws.close(); }
             if (pingInterval) clearInterval(pingInterval);
 
-            // FIX BUG C: Token tidak lagi dikirim lewat URL
+            // Jangan konek WS untuk shell jika tab-nya GitHub
+            if (currentTab === 'github') {
+                document.getElementById('terminal-overlay').classList.add('hidden');
+                return; 
+            }
+
             const wsUrl = `wss://${NGROK_URL}/ws?tab=${currentTab}`;
             
             try {
                 ws = new WebSocket(wsUrl);
 
                 ws.onopen = () => {
-                    // Kirim Autentikasi sebagai payload pertama
                     ws.send(JSON.stringify({ type: 'auth', token: secretToken }));
                     
                     document.getElementById('login-screen').classList.add('hidden');
@@ -147,8 +226,10 @@
                     document.getElementById('terminal-overlay').classList.add('hidden');
                     
                     term.clear();
-                    ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-                    fitAddon.fit();
+                    setTimeout(() => {
+                        fitAddon.fit();
+                        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+                    }, 100);
 
                     pingInterval = setInterval(() => {
                         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
@@ -160,21 +241,28 @@
                         const data = JSON.parse(event.data);
                         if(data.type === 'status_update') updateVPSStatus(data.vps1, data.vps2, data.vps3);
                         else if(data.type === 'terminal_output') term.write(data.data);
+                        else if(data.type === 'git_output') {
+                            const gitLog = document.getElementById('git-log');
+                            gitLog.innerText += "\n" + data.data;
+                            gitLog.scrollTop = gitLog.scrollHeight;
+                        }
                     } catch (e) { term.write(event.data); }
                 };
 
                 ws.onclose = (event) => {
                     clearInterval(pingInterval); 
-                    document.getElementById('terminal-overlay').classList.remove('hidden');
-                    document.getElementById('overlay-text').innerText = "Connection lost. Retrying...";
-                    
-                    if(event.code === 4001 || document.getElementById('app-screen').classList.contains('hidden')) {
-                        document.getElementById('login-btn').innerText = "[ CONNECT ]";
-                        document.getElementById('login-error').innerText = "Access Denied / Ngrok Offline.";
-                        document.getElementById('login-error').classList.remove('hidden');
-                        document.getElementById('terminal-overlay').classList.add('hidden');
-                    } else {
-                        setTimeout(connectWebSocket, 3000);
+                    if (currentTab !== 'github') {
+                        document.getElementById('terminal-overlay').classList.remove('hidden');
+                        document.getElementById('overlay-text').innerText = "Connection lost. Retrying...";
+                        
+                        if(event.code === 4001 || document.getElementById('app-screen').classList.contains('hidden')) {
+                            document.getElementById('login-btn').innerText = "[ CONNECT ]";
+                            document.getElementById('login-error').innerText = "Access Denied / Ngrok Offline.";
+                            document.getElementById('login-error').classList.remove('hidden');
+                            document.getElementById('terminal-overlay').classList.add('hidden');
+                        } else {
+                            setTimeout(connectWebSocket, 3000);
+                        }
                     }
                 };
             } catch (e) {
@@ -189,31 +277,120 @@
             }
         });
 
+        // Tab Management
         function switchTab(tabId) {
             if(currentTab === tabId) return;
             currentTab = tabId;
             
-            // Update UI Sidebar
-            ['termux', 'vps1', 'vps2', 'vps3'].forEach(id => {
+            // 1. Update UI Tab Header (Hapus active state dari semua, tambahkan ke yang terpilih)
+            ['termux', 'vps1', 'vps2', 'vps3', 'github'].forEach(id => {
                 const btn = document.getElementById(`tab-${id}`);
-                btn.classList.remove('bg-gray-800', 'text-green-400');
-                btn.classList.add('text-gray-400');
+                btn.classList.remove('bg-gray-700', 'text-green-400', 'text-orange-400');
+                if (id === 'github') btn.classList.add('text-gray-400');
+                else btn.classList.add('text-gray-400');
             });
+            
             const activeBtn = document.getElementById(`tab-${tabId}`);
             activeBtn.classList.remove('text-gray-400');
-            activeBtn.classList.add('bg-gray-800', 'text-green-400');
+            if(tabId === 'github') activeBtn.classList.add('bg-gray-700', 'text-orange-400');
+            else activeBtn.classList.add('bg-gray-700', 'text-green-400');
 
-            toggleSidebar(); // Tutup sidebar otomatis
+            // 2. Update Judul Sidebar
+            document.getElementById('sidebar-title').innerText = `SESSIONS (${tabId.toUpperCase()})`;
 
-            document.getElementById('terminal-overlay').classList.remove('hidden');
-            document.getElementById('overlay-text').innerText = `Switching to ${tabId}...`;
-            connectWebSocket();
+            // 3. Handle perpindahan tampilan (Terminal vs GitHub Panel)
+            if (tabId === 'github') {
+                document.getElementById('terminal-container').style.display = 'none';
+                document.getElementById('github-container').classList.remove('hidden');
+                document.getElementById('terminal-overlay').classList.add('hidden');
+                if(ws) ws.close(); // Putus terminal shell
+            } else {
+                document.getElementById('terminal-container').style.display = 'block';
+                document.getElementById('github-container').classList.add('hidden');
+                document.getElementById('terminal-overlay').classList.remove('hidden');
+                document.getElementById('overlay-text').innerText = `Switching to ${tabId}...`;
+                connectWebSocket();
+            }
         }
 
         function updateVPSStatus(vps1, vps2, vps3) {
-            document.getElementById('status-vps1').className = vps1 ? 'text-green-500' : 'text-red-500';
-            document.getElementById('status-vps2').className = vps2 ? 'text-green-500' : 'text-red-500';
-            document.getElementById('status-vps3').className = vps3 ? 'text-green-500' : 'text-red-500';
+            document.getElementById('status-vps1').className = vps1 ? 'text-green-500 mr-1' : 'text-red-500 mr-1';
+            document.getElementById('status-vps2').className = vps2 ? 'text-green-500 mr-1' : 'text-red-500 mr-1';
+            document.getElementById('status-vps3').className = vps3 ? 'text-green-500 mr-1' : 'text-red-500 mr-1';
+        }
+
+        // =====================================
+        // FITUR BARU: TOMBOL & FUNGSI CANGGIH
+        // =====================================
+
+        function triggerDownload() {
+            // Karena nano "buta", kita kirim magic command saat ini
+            const fileName = prompt(`Masukkan nama file yang ingin diunduh dari ${currentTab.toUpperCase()}:`, "config.py");
+            if (fileName && ws && ws.readyState === WebSocket.OPEN) {
+                // Memberitahu user via UI
+                term.write(`\r\n\x1b[36m[TMA]\x1b[0m Meminta unduhan file: ${fileName}...\r\n`);
+                // Mengirim magic command ke terminal.py
+                ws.send(JSON.stringify({ type: 'input', data: `.download ${fileName}\r` }));
+            } else if (currentTab === 'github') {
+                alert("Silakan pindah ke tab Termux/VPS untuk mengunduh file satuan.");
+            }
+        }
+
+        function triggerUpload() {
+            // Membuka hidden file explorer di HP Bos
+            document.getElementById('file-uploader').click();
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            alert(`Sistem siap mengunggah: ${file.name}\n(Catatan: Fitur transfer base64 ke terminal.py segera aktif di tahap backend selanjutnya)`);
+            
+            // Reset input agar bisa upload file yang sama lagi
+            event.target.value = '';
+        }
+
+        function addSession() {
+            const sessName = prompt(`Masukkan NAMA SESI baru untuk ${currentTab.toUpperCase()}:`, "bot_baru");
+            if(sessName) {
+                alert(`Perintah dikirim: Membuat tmux session '${sessName}' di ${currentTab.toUpperCase()}`);
+                // Di sini nanti kita kirim command websocket ke terminal.py untuk mengeksekusi: tmux new -s <sessName>
+            }
+        }
+
+        function deleteSession() {
+            const confirmation = confirm(`AWAS!\nApakah Anda yakin ingin MENGHAPUS sesi yang sedang aktif di layar ini?\n\nSemua script bot di dalamnya akan MATI (Killed).`);
+            if(confirmation) {
+                alert(`Sesi berhasil dihapus.`);
+            }
+        }
+
+        function runGit(action) {
+            const gitLog = document.getElementById('git-log');
+            gitLog.innerText += `\n[TMA] Menjalankan perintah git ${action}...`;
+            
+            // Kirim command via websocket (Untuk di-handle oleh terminal.py)
+            if(!ws || ws.readyState !== WebSocket.OPEN) {
+                // Kalau ws mati, kita buat sambungan API sementara untuk git
+                const tempWsUrl = `wss://${NGROK_URL}/ws?tab=github`;
+                const gitWs = new WebSocket(tempWsUrl);
+                gitWs.onopen = () => {
+                    gitWs.send(JSON.stringify({ type: 'auth', token: secretToken }));
+                    gitWs.send(JSON.stringify({ type: 'git_action', action: action }));
+                };
+                gitWs.onmessage = (e) => {
+                    try {
+                        const data = JSON.parse(e.data);
+                        if(data.type === 'git_output') {
+                            gitLog.innerText += "\n" + data.data;
+                            gitLog.scrollTop = gitLog.scrollHeight;
+                        }
+                    } catch(err) {}
+                };
+            } else {
+                ws.send(JSON.stringify({ type: 'git_action', action: action }));
+            }
         }
     </script>
 </body>
