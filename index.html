@@ -5,13 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Cloud Console Panel</title>
     
-    <!-- Tailwind CSS untuk Desain UI -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Telegram Web App API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
-    <!-- XTerm.js untuk Emulator Terminal -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
@@ -45,7 +42,6 @@
 </head>
 <body class="antialiased flex flex-col h-screen">
 
-    <!-- LAYAR LOGIN (Keamanan Secret Key) -->
     <div id="login-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 px-4">
         <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-slate-700">
             <div class="text-4xl mb-4">🔐</div>
@@ -63,35 +59,27 @@
         </div>
     </div>
 
-    <!-- MAIN APP SCREEN (Disembunyikan sampai login sukses) -->
     <div id="app-screen" class="hidden flex-col h-full w-full">
         
-        <!-- HEADER & TABS -->
         <div class="bg-slate-800 border-b border-slate-700 flex overflow-x-auto hide-scrollbar whitespace-nowrap px-2 py-2 shrink-0">
-            <!-- Tab Termux (Master) -->
             <button onclick="switchTab('termux')" id="tab-termux" class="tab-btn active-tab flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium text-sm mr-2 transition-colors">
                 <span class="w-2 h-2 rounded-full bg-green-400"></span> Termux Master
             </button>
             
-            <!-- Tab VPS 1 -->
             <button onclick="switchTab('vps1')" id="tab-vps1" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-sm mr-2 transition-colors">
                 <span class="w-2 h-2 rounded-full bg-red-400" id="status-vps1"></span> VPS 1
             </button>
 
-            <!-- Tab VPS 2 -->
             <button onclick="switchTab('vps2')" id="tab-vps2" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-sm mr-2 transition-colors">
                 <span class="w-2 h-2 rounded-full bg-red-400" id="status-vps2"></span> VPS 2
             </button>
 
-            <!-- Tab VPS 3 -->
             <button onclick="switchTab('vps3')" id="tab-vps3" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-sm transition-colors">
                 <span class="w-2 h-2 rounded-full bg-red-400" id="status-vps3"></span> VPS 3
             </button>
         </div>
 
-        <!-- TERMINAL AREA -->
         <div id="terminal-container" class="grow w-full relative">
-            <!-- XTerm akan dirender di sini -->
             <div id="terminal-overlay" class="absolute inset-0 bg-black/80 z-10 hidden flex-col items-center justify-center">
                 <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
                 <p class="text-sm text-slate-300" id="overlay-text">Menyambungkan...</p>
@@ -99,7 +87,6 @@
         </div>
     </div>
 
-    <!-- LOGIKA JAVASCRIPT -->
     <script>
         // Konfigurasi Telegram
         const tg = window.Telegram.WebApp;
@@ -109,6 +96,7 @@
         let currentTab = 'termux';
         let secretToken = '';
         let ws = null;
+        let pingInterval = null; // Tambahan untuk Anti-Idle
         const NGROK_URL = "dispersed-yard-manger.ngrok-free.dev"; // Dari config.py kamu
         
         // Setup XTerm.js
@@ -157,9 +145,12 @@
             if (ws) {
                 ws.close();
             }
+            
+            if (pingInterval) {
+                clearInterval(pingInterval);
+            }
 
             // Menyiapkan koneksi WebSocket Secure (wss://)
-            // Mengirim token dan nama tab yang sedang aktif
             const wsUrl = `wss://${NGROK_URL}/ws?token=${secretToken}&tab=${currentTab}`;
             
             try {
@@ -178,26 +169,32 @@
                     ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
                     
                     fitAddon.fit();
+
+                    // === FITUR HEARTBEAT (ANTI IDLE NGROK/CLOUDFLARE) ===
+                    // Mengirim ping palsu setiap 25 detik agar tunnel tidak menganggap kita AFK
+                    pingInterval = setInterval(() => {
+                        if (ws.readyState === WebSocket.OPEN) {
+                            ws.send(JSON.stringify({ type: 'ping' }));
+                        }
+                    }, 25000);
                 };
 
                 ws.onmessage = (event) => {
                     // Menulis output dari Termux/VPS ke browser
-                    // Jika data adalah string (bukan JSON), langsung tulis ke terminal
                     try {
                         const data = JSON.parse(event.data);
-                        // Handle pesan kontrol (seperti status VPS)
                         if(data.type === 'status_update') {
                             updateVPSStatus(data.vps1, data.vps2, data.vps3);
                         } else if(data.type === 'terminal_output') {
                             term.write(data.data);
                         }
                     } catch (e) {
-                        // Jika bukan JSON, anggap sebagai output raw terminal
                         term.write(event.data);
                     }
                 };
 
                 ws.onclose = (event) => {
+                    clearInterval(pingInterval); // Hentikan detak jantung saat koneksi mati
                     document.getElementById('terminal-overlay').classList.remove('hidden');
                     document.getElementById('overlay-text').innerText = "Koneksi terputus. Mencoba ulang...";
                     
