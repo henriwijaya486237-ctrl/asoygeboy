@@ -3,126 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cloud Console Panel</title>
-    
-    <!-- Tailwind CSS untuk Desain UI -->
+    <title>Termux Cloud Panel</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Telegram Web App API -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-
-    <!-- XTerm.js untuk Emulator Terminal -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
 
     <style>
-        /* Penyesuaian khusus agar terminal pas di layar HP */
         body, html {
-            height: 100%;
-            margin: 0;
-            background-color: #0f172a; /* Slate 900 */
-            color: #f8fafc; /* Slate 50 */
-            overflow: hidden;
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            height: 100%; margin: 0; background-color: #000000; color: #fff;
+            overflow: hidden; font-family: monospace;
         }
+        /* Terminal Full Screen ala Termux */
         #terminal-container {
-            height: calc(100vh - 60px); /* Sisa layar setelah header tab */
-            width: 100%;
-            padding: 10px;
-            box-sizing: border-box;
-            background-color: #000;
+            height: 100vh; width: 100vw; padding: 4px; box-sizing: border-box;
         }
-        .xterm .xterm-viewport {
-            overflow-y: auto !important;
+        .xterm .xterm-viewport { overflow-y: auto !important; }
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #000; }
+        ::-webkit-scrollbar-thumb { background: #333; }
+        
+        /* Drawer ala Termux (Geser Kiri) */
+        #sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease-in-out;
         }
-        /* Custom scrollbar untuk terminal */
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: #1e293b; }
-        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        #sidebar.open {
+            transform: translateX(0);
+        }
     </style>
 </head>
-<body class="antialiased flex flex-col h-screen">
+<body class="antialiased flex h-screen relative">
 
-    <!-- LAYAR LOGIN (Keamanan Secret Key) -->
-    <div id="login-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 px-4">
-        <div class="bg-slate-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm text-center border border-slate-700">
-            <div class="text-4xl mb-4">🔐</div>
-            <h1 class="text-xl font-bold mb-2">Cloud Console Panel</h1>
-            <p class="text-slate-400 text-sm mb-6">Masukkan Secret Key untuk mengakses server.</p>
-            
-            <input type="password" id="secret-key" placeholder="••••••" 
-                class="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-3 text-center text-xl tracking-widest focus:outline-none focus:border-blue-500 transition-colors mb-4">
-            
-            <button onclick="login()" id="login-btn"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition-colors flex justify-center items-center">
-                <span>Hubungkan ke Server</span>
+    <!-- LAYAR LOGIN -->
+    <div id="login-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black px-4">
+        <div class="p-8 w-full max-w-sm text-center">
+            <h1 class="text-green-500 font-bold text-xl mb-6">~ $ termux-login</h1>
+            <input type="password" id="secret-key" placeholder="Enter Secret Key..." 
+                class="w-full bg-transparent border-b border-green-800 text-green-400 px-2 py-2 text-center focus:outline-none focus:border-green-400 transition-colors mb-6 font-mono">
+            <button onclick="login()" id="login-btn" class="w-full border border-green-700 hover:bg-green-900 text-green-400 py-2 transition-colors font-mono">
+                [ CONNECT ]
             </button>
-            <p id="login-error" class="text-red-400 text-sm mt-4 hidden">Gagal terhubung. Periksa Key atau status Ngrok Termux.</p>
+            <p id="login-error" class="text-red-500 text-sm mt-4 hidden">Access Denied.</p>
         </div>
     </div>
 
-    <!-- MAIN APP SCREEN (Disembunyikan sampai login sukses) -->
-    <div id="app-screen" class="hidden flex-col h-full w-full">
+    <!-- MAIN APP SCREEN -->
+    <div id="app-screen" class="hidden h-full w-full relative">
         
-        <!-- HEADER & TABS -->
-        <div class="bg-slate-800 border-b border-slate-700 flex overflow-x-auto hide-scrollbar whitespace-nowrap px-2 py-2 shrink-0">
-            <!-- Tab Termux (Master) -->
-            <button onclick="switchTab('termux')" id="tab-termux" class="tab-btn active-tab flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 text-white font-medium text-sm mr-2 transition-colors">
-                <span class="w-2 h-2 rounded-full bg-green-400"></span> Termux Master
-            </button>
-            
-            <!-- Tab VPS 1 -->
-            <button onclick="switchTab('vps1')" id="tab-vps1" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-sm mr-2 transition-colors">
-                <span class="w-2 h-2 rounded-full bg-red-400" id="status-vps1"></span> VPS 1
-            </button>
+        <!-- Tombol Hamburger (Kiri Atas) -->
+        <button onclick="toggleSidebar()" class="absolute top-2 left-2 z-40 bg-gray-800/50 text-white p-2 rounded-md hover:bg-gray-700 focus:outline-none">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+        </button>
 
-            <!-- Tab VPS 2 -->
-            <button onclick="switchTab('vps2')" id="tab-vps2" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-sm mr-2 transition-colors">
-                <span class="w-2 h-2 rounded-full bg-red-400" id="status-vps2"></span> VPS 2
-            </button>
-
-            <!-- Tab VPS 3 -->
-            <button onclick="switchTab('vps3')" id="tab-vps3" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg bg-slate-700 text-slate-300 font-medium text-sm transition-colors">
-                <span class="w-2 h-2 rounded-full bg-red-400" id="status-vps3"></span> VPS 3
-            </button>
+        <!-- Sidebar / Drawer Sessions -->
+        <div id="sidebar" class="absolute inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-800 z-50 shadow-2xl flex flex-col">
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center">
+                <span class="text-green-400 font-bold">SESSIONS</span>
+                <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-sm">
+                <button onclick="switchTab('termux')" id="tab-termux" class="w-full text-left px-3 py-2 rounded bg-gray-800 text-green-400">1. Termux Master</button>
+                <button onclick="switchTab('vps1')" id="tab-vps1" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-gray-400"><span id="status-vps1" class="text-red-500">●</span> 2. VPS-Game-1</button>
+                <button onclick="switchTab('vps2')" id="tab-vps2" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-gray-400"><span id="status-vps2" class="text-red-500">●</span> 3. VPS-Grup-2</button>
+                <button onclick="switchTab('vps3')" id="tab-vps3" class="w-full text-left px-3 py-2 rounded hover:bg-gray-800 text-gray-400"><span id="status-vps3" class="text-red-500">●</span> 4. VPS-Berat-3</button>
+            </div>
         </div>
 
-        <!-- TERMINAL AREA -->
-        <div id="terminal-container" class="grow w-full relative">
-            <!-- XTerm akan dirender di sini -->
-            <div id="terminal-overlay" class="absolute inset-0 bg-black/80 z-10 hidden flex-col items-center justify-center">
-                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
-                <p class="text-sm text-slate-300" id="overlay-text">Menyambungkan...</p>
+        <!-- Lapisan Gelap saat sidebar buka -->
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="absolute inset-0 bg-black/50 z-40 hidden"></div>
+
+        <!-- Terminal Area -->
+        <div id="terminal-container" class="w-full h-full relative">
+            <div id="terminal-overlay" class="absolute inset-0 bg-black/90 z-30 hidden flex-col items-center justify-center font-mono">
+                <p class="text-green-500" id="overlay-text">Connecting...</p>
             </div>
         </div>
     </div>
 
-    <!-- LOGIKA JAVASCRIPT -->
     <script>
-        // Konfigurasi Telegram
         const tg = window.Telegram.WebApp;
-        tg.expand(); // Perluas app ke layar penuh
+        tg.expand();
+        tg.setHeaderColor('#000000');
 
-        // State Aplikasi
         let currentTab = 'termux';
         let secretToken = '';
         let ws = null;
-        let pingInterval = null; // Tambahan untuk Anti-Idle
-        const NGROK_URL = "dispersed-yard-manger.ngrok-free.dev"; // Dari config.py kamu
+        let pingInterval = null;
+        const NGROK_URL = "dispersed-yard-manger.ngrok-free.dev"; 
         
-        // Setup XTerm.js
         const term = new Terminal({
             cursorBlink: true,
-            theme: {
-                background: '#000000',
-                foreground: '#f8fafc',
-                cursor: '#3b82f6',
-            },
-            fontFamily: 'Menlo, Monaco, "Courier New", monospace',
-            fontSize: window.innerWidth < 600 ? 12 : 14, // Responsive font
-            allowProposedApi: true
+            theme: { background: '#000000', foreground: '#f8fafc', cursor: '#22c55e' }, // Kursor Hijau
+            fontFamily: '"Courier New", Courier, monospace',
+            fontSize: window.innerWidth < 600 ? 12 : 14
         });
         
         const fitAddon = new FitAddon.FitAddon();
@@ -130,151 +105,116 @@
         term.open(document.getElementById('terminal-container'));
         fitAddon.fit();
 
-        // Handle Resize layar
         window.addEventListener('resize', () => {
             fitAddon.fit();
             if(ws && ws.readyState === WebSocket.OPEN) {
-                // Beritahu backend ukuran terminal berubah
                 ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
             }
         });
 
-        // Fungsi Login & Koneksi WebSocket
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('hidden');
+        }
+
         function login() {
             const keyInput = document.getElementById('secret-key').value;
-            const errorMsg = document.getElementById('login-error');
-            const btn = document.getElementById('login-btn');
-            
             if(!keyInput) return;
-            
             secretToken = keyInput;
-            btn.innerHTML = `<div class="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>`;
-            errorMsg.classList.add('hidden');
-
+            document.getElementById('login-btn').innerText = "[ LOADING... ]";
+            document.getElementById('login-error').classList.add('hidden');
             connectWebSocket();
         }
 
         function connectWebSocket() {
-            if (ws) {
-                // PENTING: Matikan event onclose sebelum ditutup agar tidak memicu auto-reconnect hantu saat pindah tab
-                ws.onclose = null; 
-                ws.close();
-            }
-            
-            if (pingInterval) {
-                clearInterval(pingInterval);
-            }
+            if (ws) { ws.onclose = null; ws.close(); }
+            if (pingInterval) clearInterval(pingInterval);
 
-            // Menyiapkan koneksi WebSocket Secure (wss://)
-            const wsUrl = `wss://${NGROK_URL}/ws?token=${secretToken}&tab=${currentTab}`;
+            // FIX BUG C: Token tidak lagi dikirim lewat URL
+            const wsUrl = `wss://${NGROK_URL}/ws?tab=${currentTab}`;
             
             try {
                 ws = new WebSocket(wsUrl);
 
                 ws.onopen = () => {
-                    // Sukses Login
+                    // Kirim Autentikasi sebagai payload pertama
+                    ws.send(JSON.stringify({ type: 'auth', token: secretToken }));
+                    
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('app-screen').classList.remove('hidden');
                     document.getElementById('terminal-overlay').classList.add('hidden');
                     
                     term.clear();
-                    // Jika kamu tidak mau ada notifikasi tulisan hijau di terminal, baris ini bisa dihapus
-                    term.writeln(`\x1b[1;32m[+] Terhubung ke Node: ${currentTab.toUpperCase()}\x1b[0m`);
-                    
-                    // Kirim info ukuran layar saat ini
                     ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-                    
                     fitAddon.fit();
 
-                    // === FITUR HEARTBEAT (ANTI IDLE NGROK) ===
                     pingInterval = setInterval(() => {
-                        if (ws.readyState === WebSocket.OPEN) {
-                            ws.send(JSON.stringify({ type: 'ping' }));
-                        }
+                        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
                     }, 25000);
                 };
 
                 ws.onmessage = (event) => {
-                    // Menulis output dari Termux/VPS ke browser
                     try {
                         const data = JSON.parse(event.data);
-                        if(data.type === 'status_update') {
-                            updateVPSStatus(data.vps1, data.vps2, data.vps3);
-                        } else if(data.type === 'terminal_output') {
-                            term.write(data.data);
-                        }
-                    } catch (e) {
-                        term.write(event.data);
-                    }
+                        if(data.type === 'status_update') updateVPSStatus(data.vps1, data.vps2, data.vps3);
+                        else if(data.type === 'terminal_output') term.write(data.data);
+                    } catch (e) { term.write(event.data); }
                 };
 
                 ws.onclose = (event) => {
-                    // Blok ini HANYA JALAN jika koneksi terputus tiba-tiba (internet mati), BUKAN karena pindah tab
                     clearInterval(pingInterval); 
                     document.getElementById('terminal-overlay').classList.remove('hidden');
-                    document.getElementById('overlay-text').innerText = "Koneksi terputus. Mencoba ulang...";
+                    document.getElementById('overlay-text').innerText = "Connection lost. Retrying...";
                     
-                    // Kembali ke layar login jika di-kick karena password salah
                     if(event.code === 4001 || document.getElementById('app-screen').classList.contains('hidden')) {
-                        document.getElementById('login-btn').innerHTML = `<span>Hubungkan ke Server</span>`;
-                        document.getElementById('login-error').innerText = "Akses ditolak atau Ngrok offline.";
+                        document.getElementById('login-btn').innerText = "[ CONNECT ]";
+                        document.getElementById('login-error').innerText = "Access Denied / Ngrok Offline.";
                         document.getElementById('login-error').classList.remove('hidden');
                         document.getElementById('terminal-overlay').classList.add('hidden');
                     } else {
-                        // Coba reconnect otomatis tiap 3 detik
                         setTimeout(connectWebSocket, 3000);
                     }
                 };
-
-                ws.onerror = (error) => {
-                    console.error('WebSocket Error:', error);
-                };
-
             } catch (e) {
                 document.getElementById('login-error').classList.remove('hidden');
-                document.getElementById('login-btn').innerHTML = `<span>Hubungkan ke Server</span>`;
+                document.getElementById('login-btn').innerText = "[ CONNECT ]";
             }
         }
 
-        // Tangkap ketikan keyboard dan kirim ke backend
         term.onData(data => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'input', data: data }));
             }
         });
 
-        // Logika Perpindahan Tab
         function switchTab(tabId) {
-            if(currentTab === tabId) return; // Jangan lakukan apapun jika tab yang sama ditekan
-            
+            if(currentTab === tabId) return;
             currentTab = tabId;
             
-            // Reset gaya semua tab
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-blue-600', 'text-white');
-                btn.classList.add('bg-slate-700', 'text-slate-300');
+            // Update UI Sidebar
+            ['termux', 'vps1', 'vps2', 'vps3'].forEach(id => {
+                const btn = document.getElementById(`tab-${id}`);
+                btn.classList.remove('bg-gray-800', 'text-green-400');
+                btn.classList.add('text-gray-400');
             });
-            
-            // Aktifkan gaya tab yang dipilih
             const activeBtn = document.getElementById(`tab-${tabId}`);
-            activeBtn.classList.remove('bg-slate-700', 'text-slate-300');
-            activeBtn.classList.add('bg-blue-600', 'text-white');
+            activeBtn.classList.remove('text-gray-400');
+            activeBtn.classList.add('bg-gray-800', 'text-green-400');
 
-            // Tampilkan loading overlay
+            toggleSidebar(); // Tutup sidebar otomatis
+
             document.getElementById('terminal-overlay').classList.remove('hidden');
-            document.getElementById('overlay-text').innerText = `Berpindah ke ${tabId.toUpperCase()}...`;
-
-            // Sambungkan ulang WebSocket ke session yang baru (Proses bash lama di server tidak akan mati)
+            document.getElementById('overlay-text').innerText = `Switching to ${tabId}...`;
             connectWebSocket();
         }
 
-        // Fungsi memperbarui titik indikator online/offline
-        function updateVPSStatus(vps1Online, vps2Online, vps3Online) {
-            document.getElementById('status-vps1').className = vps1Online ? 'w-2 h-2 rounded-full bg-green-400' : 'w-2 h-2 rounded-full bg-red-400';
-            document.getElementById('status-vps2').className = vps2Online ? 'w-2 h-2 rounded-full bg-green-400' : 'w-2 h-2 rounded-full bg-red-400';
-            document.getElementById('status-vps3').className = vps3Online ? 'w-2 h-2 rounded-full bg-green-400' : 'w-2 h-2 rounded-full bg-red-400';
+        function updateVPSStatus(vps1, vps2, vps3) {
+            document.getElementById('status-vps1').className = vps1 ? 'text-green-500' : 'text-red-500';
+            document.getElementById('status-vps2').className = vps2 ? 'text-green-500' : 'text-red-500';
+            document.getElementById('status-vps3').className = vps3 ? 'text-green-500' : 'text-red-500';
         }
-
     </script>
 </body>
 </html>
