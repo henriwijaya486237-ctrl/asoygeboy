@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css" />
     <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <!-- Library untuk menghitung Diff Kode -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/7.0.0/diff.min.js"></script>
 
     <style>
         body, html {
@@ -36,12 +38,21 @@
         /* Menyembunyikan Scrollbar di Tab Header tapi tetap bisa di-scroll */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Animasi Pop-up Chat */
+        @keyframes slideUp {
+            from { transform: translateY(100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .slide-up {
+            animation: slideUp 0.3s ease-out forwards;
+        }
     </style>
 </head>
 <body class="antialiased flex h-screen relative">
 
     <!-- LAYAR LOGIN -->
-    <div id="login-screen" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black px-4">
+    <div id="login-screen" class="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-black px-4">
         <div class="p-8 w-full max-w-sm text-center">
             <h1 class="text-green-500 font-bold text-xl mb-6">~ $ termux-login</h1>
             <input type="password" id="secret-key" placeholder="Enter Secret Key..." 
@@ -85,7 +96,7 @@
         </div>
 
         <!-- SIDEBAR / DRAWER SESSIONS (Spesifik per Tab) -->
-        <div id="sidebar" class="absolute inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-800 z-50 shadow-2xl flex flex-col pt-14">
+        <div id="sidebar" class="absolute inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-800 z-[45] shadow-2xl flex flex-col pt-14">
             <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-black/20">
                 <span class="text-green-400 font-bold" id="sidebar-title">SESSIONS (Termux)</span>
                 <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white">&times;</button>
@@ -104,7 +115,7 @@
         </div>
 
         <!-- Lapisan Gelap saat sidebar buka -->
-        <div id="sidebar-overlay" onclick="toggleSidebar()" class="absolute inset-0 z-40 hidden bg-black/50 backdrop-blur-sm"></div>
+        <div id="sidebar-overlay" onclick="toggleSidebar()" class="absolute inset-0 z-[40] hidden bg-black/50 backdrop-blur-sm"></div>
 
         <!-- AREA KONTEN UTAMA (Terminal & GitHub) -->
         <div class="flex-1 relative overflow-hidden bg-black">
@@ -117,7 +128,7 @@
                 <p class="text-green-500" id="overlay-text">Connecting...</p>
             </div>
 
-            <!-- GitHub Panel Container (Hidden by default) -->
+            <!-- GitHub Panel Container -->
             <div id="github-container" class="absolute inset-0 hidden bg-black p-4 z-20 overflow-y-auto font-mono">
                 <div class="max-w-3xl mx-auto">
                     <h2 class="text-orange-400 mb-6 text-2xl font-bold border-b border-gray-800 pb-2">🐙 GitHub Repository Manager</h2>
@@ -146,14 +157,77 @@
                 </div>
             </div>
 
+            <!-- FAB: Tombol Melayang Gemini -->
+            <button id="gemini-fab" onclick="toggleGeminiChat()" class="absolute bottom-6 right-6 bg-indigo-600 hover:bg-indigo-500 text-white w-14 h-14 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)] z-30 hidden flex items-center justify-center text-2xl border-2 border-indigo-400/30 transition-transform active:scale-90">
+                🤖
+            </button>
+
         </div>
+
+        <!-- MODAL: POP-UP CHAT GEMINI -->
+        <div id="gemini-chat-modal" class="absolute inset-0 z-[50] hidden bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center">
+            <div class="bg-gray-900 w-full sm:w-[450px] h-[85vh] sm:h-[600px] rounded-t-2xl sm:rounded-2xl flex flex-col border border-gray-700 shadow-2xl slide-up">
+                <!-- Header -->
+                <div class="p-3 border-b border-gray-800 flex justify-between items-center bg-indigo-900/40 rounded-t-2xl sm:rounded-t-2xl">
+                    <span class="font-bold text-indigo-400 flex items-center gap-2">🤖 Gemini Workspace</span>
+                    <div class="flex gap-2">
+                        <button onclick="geminiNewChat()" class="text-xs px-2 py-1 bg-gray-800 rounded text-gray-300 hover:bg-indigo-500 hover:text-white transition-colors border border-gray-700 flex items-center gap-1">
+                            <span>🔄</span> New Chat
+                        </button>
+                        <button onclick="toggleGeminiChat()" class="text-gray-400 hover:text-white px-2 text-xl">&times;</button>
+                    </div>
+                </div>
+                <!-- Area Pesan (Scrollable) -->
+                <div id="gemini-messages" class="flex-1 overflow-y-auto p-4 text-sm font-sans flex flex-col gap-4">
+                    <!-- Pesan Awal -->
+                    <div class="flex justify-start">
+                        <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none max-w-[85%] text-gray-200">
+                            Halo Bos! Saya siap menganalisa terminal dan membaca isi folder saat ini. Apa yang ingin diperbaiki atau dibuat hari ini?
+                        </div>
+                    </div>
+                </div>
+                <!-- Input Area -->
+                <div class="p-3 border-t border-gray-800 bg-gray-900 flex gap-2 rounded-b-2xl sm:rounded-b-2xl">
+                    <input type="text" id="gemini-input" placeholder="Jelaskan masalah atau ide bot baru..." class="flex-1 bg-gray-800 text-white px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-indigo-500 font-sans text-sm">
+                    <button onclick="sendGeminiMessage()" class="bg-indigo-600 px-4 py-2 rounded-lg text-white font-bold hover:bg-indigo-500 shadow transition-colors">▶</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- MODAL: CANVAS PERBANDINGAN KODE (DIFF VIEWER) -->
+        <div id="gemini-canvas-modal" class="absolute inset-0 z-[55] hidden bg-black flex flex-col">
+            <!-- Header Canvas -->
+            <div class="h-14 bg-gray-900 border-b border-gray-800 flex justify-between items-center px-4 shrink-0 shadow-lg">
+                <span class="font-bold text-orange-400 font-sans flex items-center gap-2">🖥️ Canvas Perbandingan <span id="canvas-filename" class="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300 font-mono"></span></span>
+                <div class="flex gap-2">
+                    <button onclick="closeGeminiCanvas()" class="px-4 py-1.5 bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 rounded-md text-sm font-bold font-sans transition-colors">Batal</button>
+                    <button onclick="applyGeminiCode()" id="btn-apply-code" class="px-4 py-1.5 bg-green-600 text-white hover:bg-green-500 rounded-md text-sm font-bold font-sans shadow transition-colors flex items-center gap-1">
+                        ✨ Terapkan (Overwrite)
+                    </button>
+                </div>
+            </div>
+            <!-- Split View: Atas Bawah -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <!-- Top: Kode Lama -->
+                <div class="flex-1 border-b-2 border-gray-700 flex flex-col min-h-0 relative">
+                    <div class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-red-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🔴 Kode Asli</div>
+                    <div class="flex-1 overflow-auto bg-[#0d1117] p-4 text-xs sm:text-sm font-mono whitespace-pre" id="canvas-old-code"></div>
+                </div>
+                <!-- Bottom: Kode Baru -->
+                <div class="flex-1 flex flex-col min-h-0 relative">
+                    <div class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-green-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🟢 Kode AI (Revisi)</div>
+                    <div class="flex-1 overflow-auto bg-[#0d1117] p-4 text-xs sm:text-sm font-mono whitespace-pre" id="canvas-new-code"></div>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- LOGIKA JAVASCRIPT -->
     <script>
         const tg = window.Telegram.WebApp;
         tg.expand();
-        tg.setHeaderColor('#111827'); // gray-900 untuk menyatu dengan header
+        tg.setHeaderColor('#111827'); // gray-900
 
         let currentTab = 'termux';
         let secretToken = '';
@@ -161,7 +235,7 @@
         let pingInterval = null;
         const NGROK_URL = "dispersed-yard-manger.ngrok-free.dev"; 
         
-        // Terminal Setup
+        // --- TERMINAL SETUP ---
         const term = new Terminal({
             cursorBlink: true,
             theme: { background: '#000000', foreground: '#f8fafc', cursor: '#22c55e', selection: 'rgba(255, 255, 255, 0.3)' },
@@ -184,7 +258,7 @@
             }
         });
 
-        // UI Functions
+        // --- UI FUNCTIONS ---
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -192,7 +266,7 @@
             overlay.classList.toggle('hidden');
         }
 
-        // WebSockets & Login
+        // --- WEBSOCKET & LOGIN ---
         function login() {
             const keyInput = document.getElementById('secret-key').value;
             if(!keyInput) return;
@@ -208,10 +282,10 @@
 
             if (currentTab === 'github') {
                 document.getElementById('terminal-overlay').classList.add('hidden');
+                document.getElementById('gemini-fab').classList.add('hidden');
                 return; 
             }
 
-            // Ganti URL Ngrok sesuai dengan config
             const wsUrl = `wss://${NGROK_URL}/ws?tab=${currentTab}`;
             
             try {
@@ -224,12 +298,13 @@
                     document.getElementById('app-screen').classList.remove('hidden');
                     document.getElementById('terminal-overlay').classList.add('hidden');
                     
+                    // Tampilkan tombol FAB Gemini
+                    document.getElementById('gemini-fab').classList.remove('hidden');
+                    
                     term.clear();
                     setTimeout(() => {
                         fitAddon.fit();
                         ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-                        
-                        // Minta daftar sesi ke backend saat konek
                         ws.send(JSON.stringify({ type: 'request_sessions', tab: currentTab }));
                     }, 100);
 
@@ -248,8 +323,11 @@
                             gitLog.innerText += "\n" + data.data;
                             gitLog.scrollTop = gitLog.scrollHeight;
                         }
-                        else if(data.type === 'session_list') {
-                            renderSessionList(data.data);
+                        else if(data.type === 'session_list') renderSessionList(data.data);
+                        
+                        // Menangkap balasan dari Gemini
+                        else if(data.type === 'gemini_response') {
+                            appendGeminiMessage(data.text, 'bot', data.canvasData);
                         }
                     } catch (e) { term.write(event.data); }
                 };
@@ -258,6 +336,7 @@
                     clearInterval(pingInterval); 
                     if (currentTab !== 'github') {
                         document.getElementById('terminal-overlay').classList.remove('hidden');
+                        document.getElementById('gemini-fab').classList.add('hidden');
                         document.getElementById('overlay-text').innerText = "Connection lost. Retrying...";
                         
                         if(event.code === 4001 || document.getElementById('app-screen').classList.contains('hidden')) {
@@ -282,7 +361,7 @@
             }
         });
 
-        // Tab Management
+        // --- TAB MANAGEMENT ---
         function switchTab(tabId) {
             if(currentTab === tabId) return;
             currentTab = tabId;
@@ -305,6 +384,7 @@
                 document.getElementById('terminal-container').style.display = 'none';
                 document.getElementById('github-container').classList.remove('hidden');
                 document.getElementById('terminal-overlay').classList.add('hidden');
+                document.getElementById('gemini-fab').classList.add('hidden');
                 if(ws) ws.close();
             } else {
                 document.getElementById('terminal-container').style.display = 'block';
@@ -335,7 +415,6 @@
                 btn.className = 'w-full text-left px-3 py-2 rounded text-gray-400 hover:bg-gray-800 hover:text-green-400 transition';
                 btn.innerHTML = `<span class="mr-2 text-xs">●</span> ${sess}`;
                 
-                // MENGAKTIFKAN FITUR PINDAH SESI YANG SEBELUMNYA HANYA ALERT
                 btn.onclick = () => {
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'switch_session', name: sess, tab: currentTab }));
@@ -368,22 +447,11 @@
         }
 
         function addSession() {
-            // FIX NAMA SESI: Beri peringatan dan auto-format nama agar Tmux tidak menolak
             let sessName = prompt(`Masukkan NAMA SESI baru untuk ${currentTab.toUpperCase()}:\n(Hanya huruf, angka, & underscore. TANPA SPASI!)`, "bot_baru");
             if(sessName && ws && ws.readyState === WebSocket.OPEN) {
-                // Hapus spasi dan karakter ilegal secara otomatis
                 sessName = sessName.replace(/[^a-zA-Z0-9_]/g, "_");
-                
-                ws.send(JSON.stringify({ 
-                    type: 'create_session', 
-                    name: sessName, 
-                    tab: currentTab 
-                }));
-                
-                // HAPUS toggleSidebar() di sini agar laci tidak tertutup tiba-tiba
-                // Tambahkan indikator loading di list
+                ws.send(JSON.stringify({ type: 'create_session', name: sessName, tab: currentTab }));
                 document.getElementById('session-list').innerHTML = `<p class="text-green-500 text-xs px-2 py-4 animate-pulse">Membuat sesi '${sessName}'...</p>`;
-                
             } else if (currentTab === 'github') {
                 alert("Sesi Tmux tidak bisa dibuat di Tab GitHub.");
             }
@@ -421,6 +489,186 @@
                 ws.send(JSON.stringify({ type: 'git_action', action: action }));
             }
         }
+
+        // ==========================================
+        // FITUR AI GEMINI & CANVAS DIFF VIEWER
+        // ==========================================
+        let currentCanvasPayload = null;
+
+        function toggleGeminiChat() {
+            const modal = document.getElementById('gemini-chat-modal');
+            modal.classList.toggle('hidden');
+            if(!modal.classList.contains('hidden')) {
+                document.getElementById('gemini-input').focus();
+            }
+        }
+
+        function geminiNewChat() {
+            document.getElementById('gemini-messages').innerHTML = `
+                <div class="flex justify-start">
+                    <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none max-w-[85%] text-gray-200">
+                        🔄 Sesi memori telah di-reset. Apa yang ingin kita kerjakan sekarang?
+                    </div>
+                </div>
+            `;
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'gemini_action', action: 'new_chat' }));
+            }
+        }
+
+        function sendGeminiMessage() {
+            const inputEl = document.getElementById('gemini-input');
+            const text = inputEl.value.trim();
+            if(!text) return;
+
+            // Render pesan user di UI
+            appendGeminiMessage(text, 'user', null);
+            inputEl.value = '';
+
+            // Render efek loading bot
+            const loadingId = 'loading-' + Date.now();
+            document.getElementById('gemini-messages').insertAdjacentHTML('beforeend', `
+                <div id="${loadingId}" class="flex justify-start">
+                    <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none text-gray-400 italic text-xs animate-pulse">
+                        Sedang menganalisa folder & terminal...
+                    </div>
+                </div>
+            `);
+            scrollToBottomChat();
+
+            // Kirim ke backend
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'gemini_chat', text: text }));
+            }
+        }
+
+        // Enter untuk mengirim pesan
+        document.getElementById('gemini-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendGeminiMessage();
+        });
+
+        function appendGeminiMessage(text, role, canvasData) {
+            // Hapus indikator loading jika ada
+            const loadingEls = document.querySelectorAll('[id^="loading-"]');
+            loadingEls.forEach(el => el.remove());
+
+            const msgContainer = document.getElementById('gemini-messages');
+            const isUser = role === 'user';
+            
+            let html = `<div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                <div class="${isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-800 border border-gray-700 text-gray-200 rounded-tl-none'} p-3 rounded-lg max-w-[90%] whitespace-pre-wrap leading-relaxed shadow-sm">
+                    ${escapeHtml(text)}
+                </div>
+            </div>`;
+
+            msgContainer.insertAdjacentHTML('beforeend', html);
+
+            // Jika backend membalas dengan membawa revisi kode (Diff View / Scaffolding)
+            if(canvasData && canvasData.filename && canvasData.newCode) {
+                // Simpan payload untuk digunakan saat tombol diklik
+                const canvasId = 'canvas-btn-' + Date.now();
+                window[canvasId] = canvasData; 
+                
+                const btnText = canvasData.oldCode ? "🖥️ Buka Canvas Perbandingan" : "📦 Tinjau Struktur File Baru";
+                const btnHtml = `
+                    <div class="flex justify-start mt-1 mb-2">
+                        <button onclick="openGeminiCanvas(window['${canvasId}'])" class="bg-gray-900 border border-orange-500/50 hover:bg-orange-900/40 text-orange-400 font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-2 shadow transition-colors">
+                            ${btnText}
+                        </button>
+                    </div>
+                `;
+                msgContainer.insertAdjacentHTML('beforeend', btnHtml);
+            }
+
+            scrollToBottomChat();
+        }
+
+        function scrollToBottomChat() {
+            const container = document.getElementById('gemini-messages');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Fungsi Helper untuk mencegah XSS
+        function escapeHtml(unsafe) {
+            return unsafe
+                 .replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+        }
+
+        // --- SISTEM CANVAS (DIFF VIEWER) ---
+        function openGeminiCanvas(data) {
+            currentCanvasPayload = data;
+            document.getElementById('canvas-filename').innerText = data.filename;
+            
+            const oldCodeContainer = document.getElementById('canvas-old-code');
+            const newCodeContainer = document.getElementById('canvas-new-code');
+            
+            // Mode Scaffolding (File Baru)
+            if(!data.oldCode) {
+                oldCodeContainer.innerHTML = '<span class="text-gray-500 italic">// Tidak ada kode lama. Ini adalah pembuatan file baru.</span>';
+                newCodeContainer.innerHTML = `<span class="text-green-300">${escapeHtml(data.newCode)}</span>`;
+                document.getElementById('btn-apply-code').innerHTML = '✨ Buat File (Eksekusi)';
+            } 
+            // Mode Revisi (Diff Merah/Hijau Menggunakan jsDiff)
+            else {
+                document.getElementById('btn-apply-code').innerHTML = '✨ Terapkan (Overwrite)';
+                
+                const diff = Diff.diffLines(data.oldCode, data.newCode);
+                let oldHtml = '';
+                let newHtml = '';
+                
+                diff.forEach(part => {
+                    // Blok merah untuk kode yang dihapus
+                    const colorOld = part.added ? 'hidden' : part.removed ? 'bg-red-900/60 text-red-200 block' : 'text-gray-400';
+                    // Blok hijau untuk kode yang ditambah
+                    const colorNew = part.removed ? 'hidden' : part.added ? 'bg-green-900/60 text-green-200 block' : 'text-gray-400';
+
+                    if (!part.added) oldHtml += `<span class="${colorOld}">${escapeHtml(part.value)}</span>`;
+                    if (!part.removed) newHtml += `<span class="${colorNew}">${escapeHtml(part.value)}</span>`;
+                });
+
+                oldCodeContainer.innerHTML = oldHtml;
+                newCodeContainer.innerHTML = newHtml;
+            }
+
+            // Tampilkan Modal Canvas
+            document.getElementById('gemini-canvas-modal').classList.remove('hidden');
+        }
+
+        function closeGeminiCanvas() {
+            document.getElementById('gemini-canvas-modal').classList.add('hidden');
+            currentCanvasPayload = null;
+        }
+
+        function applyGeminiCode() {
+            if(!currentCanvasPayload || !ws || ws.readyState !== WebSocket.OPEN) return;
+            
+            // Kirim instruksi overwrite ke backend Python
+            ws.send(JSON.stringify({
+                type: 'gemini_apply_code',
+                filename: currentCanvasPayload.filename,
+                newCode: currentCanvasPayload.newCode
+            }));
+
+            // Ubah teks tombol jadi loading
+            const btn = document.getElementById('btn-apply-code');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Menerapkan...';
+            btn.disabled = true;
+
+            setTimeout(() => {
+                closeGeminiCanvas();
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                
+                // Beri tahu user di chat pop-up
+                appendGeminiMessage(`✅ Perubahan pada '${currentCanvasPayload.filename}' berhasil disimpan ke sistem!`, 'bot', null);
+            }, 800);
+        }
+
     </script>
 </body>
 </html>
