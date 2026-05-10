@@ -164,7 +164,7 @@
         </div>
 
         <!-- KEYBOARD VIRTUAL 2 BARIS (EXTRA KEYS) TIPE TERMUX -->
-        <div id="virtual-keyboard" class="bg-[#1e1e1e] border-t border-gray-800 flex flex-col shrink-0 z-[35] touch-manipulation select-none pb-1">
+        <div id="virtual-keyboard" class="bg-[#1e1e1e] border-t border-gray-800 flex flex-col shrink-0 z-[35] touch-manipulation select-none pb-1 hidden">
             <!-- Baris 1 -->
             <div class="flex w-full px-1 pt-1 gap-1">
                 <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="ESC">ESC</button>
@@ -248,16 +248,18 @@
 
     <!-- LOGIKA JAVASCRIPT -->
     <script>
-        const tg = window.Telegram.WebApp;
-        tg.expand();
-        tg.setHeaderColor('#111827'); // gray-900
+        // Init Telegram WebApp 
+        try {
+            const tg = window.Telegram.WebApp;
+            tg.expand();
+            tg.setHeaderColor('#111827'); 
+        } catch (e) {}
 
         let currentTab = 'termux';
         let secretToken = '';
         let ws = null;
         let pingInterval = null;
         
-        // State Virtual Keyboard
         let ctrlActive = false;
         let altActive = false;
 
@@ -286,48 +288,33 @@
             }
         });
 
-        // --- SISTEM TOUCH SWIPE TO SCROLL (TERKHUSUS EDITOR MICRO/NANO) ---
+        // --- SISTEM TOUCH SWIPE TO SCROLL ---
         let touchStartY = 0;
         document.getElementById('terminal-container').addEventListener('touchstart', e => {
-            if(e.touches.length === 1) {
-                touchStartY = e.touches[0].clientY;
-            }
+            if(e.touches.length === 1) touchStartY = e.touches[0].clientY;
         }, {passive: true});
 
         document.getElementById('terminal-container').addEventListener('touchmove', e => {
-            // Hanya aktifkan logika swipe ini JIKA terminal sedang dalam "alternate buffer" (mode text editor seperti micro/nano)
             if (term.buffer.active.type === 'alternate' && e.touches.length === 1) {
                 const touchY = e.touches[0].clientY;
                 const deltaY = touchStartY - touchY;
-                
-                if (Math.abs(deltaY) > 15) { // Threshold/sensitivitas usapan
+                if (Math.abs(deltaY) > 15) { 
                     if (ws && ws.readyState === WebSocket.OPEN) {
-                        // FIX: Mengirim instruksi escape sequence yang benar
                         ws.send(JSON.stringify({ type: 'input', data: deltaY > 0 ? "\x1b[B" : "\x1b[A" }));
                     }
-                    touchStartY = touchY; // Reset kordinat untuk melanjutkan usapan
+                    touchStartY = touchY; 
                 }
             }
         }, {passive: true});
 
-        // --- VIRTUAL KEYBOARD SYSTEM (AUTO-REPEAT & ANTI-TENGGELAM) ---
+        // --- VIRTUAL KEYBOARD SYSTEM ---
         let vkRepeatInterval = null;
         let vkRepeatTimeout = null;
 
-        // Map kode tombol ke escape sequence yang benar
         const KEY_MAP = {
-            'ESC': '\x1b',
-            'TAB': '\t',
-            'UP': '\x1b[A',
-            'DOWN': '\x1b[B',
-            'RIGHT': '\x1b[C',
-            'LEFT': '\x1b[D',
-            'HOME': '\x1b[H',
-            'END': '\x1b[F',
-            'PGUP': '\x1b[5~',
-            'PGDN': '\x1b[6~',
-            '-': '-',
-            '/': '/'
+            'ESC': '\x1b', 'TAB': '\t', 'UP': '\x1b[A', 'DOWN': '\x1b[B',
+            'RIGHT': '\x1b[C', 'LEFT': '\x1b[D', 'HOME': '\x1b[H', 'END': '\x1b[F',
+            'PGUP': '\x1b[5~', 'PGDN': '\x1b[6~', '-': '-', '/': '/'
         };
 
         function toggleCtrl() {
@@ -354,7 +341,6 @@
             let finalData = KEY_MAP[keyName];
             if(!finalData) return;
             
-            // Handle CTRL/ALT Modifiers khusus untuk tombol tunggal (- atau /)
             if (finalData.length === 1 && keyName !== 'ESC' && keyName !== 'TAB') {
                 if (ctrlActive) {
                     const charCode = finalData.toLowerCase().charCodeAt(0);
@@ -367,17 +353,13 @@
             }
 
             const triggerSend = () => {
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({ type: 'input', data: finalData }));
-                }
+                if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'input', data: finalData }));
             };
 
-            // Tembakan pertama instan
             triggerSend();
             btnElement.classList.replace('bg-gray-800', 'bg-gray-600');
             term.focus();
 
-            // Auto-repeat/Looping untuk men-scroll baris jika ditahan
             vkRepeatTimeout = setTimeout(() => {
                 vkRepeatInterval = setInterval(triggerSend, 50);
             }, 400);
@@ -396,10 +378,8 @@
                 if (!keyName) return;
 
                 const handlePress = (e) => {
-                    e.preventDefault(); // KUNCI UTAMA: Cegah OS menarik fokus dari terminal
-                    if (e.type === 'touchstart' || e.type === 'mousedown') {
-                        startKeyRepeat(keyName, btn);
-                    }
+                    e.preventDefault(); 
+                    if (e.type === 'touchstart' || e.type === 'mousedown') startKeyRepeat(keyName, btn);
                 };
 
                 const handleRelease = (e) => {
@@ -407,36 +387,29 @@
                     stopKeyRepeat(btn);
                 };
 
-                // Event Sentuh (Mobile)
                 btn.addEventListener('touchstart', handlePress, {passive: false});
                 btn.addEventListener('touchend', handleRelease, {passive: false});
                 btn.addEventListener('touchcancel', handleRelease, {passive: false});
-
-                // Event Klik (PC/Mouse fallback)
                 btn.addEventListener('mousedown', handlePress);
                 btn.addEventListener('mouseup', handleRelease);
                 btn.addEventListener('mouseleave', handleRelease);
             });
 
-            // Toggle Handler (CTRL/ALT) - butuh preventDefault agar keyboard utama tidak mati
             const setupToggle = (id, toggleFn) => {
                 const el = document.getElementById(id);
-                const handler = (e) => { e.preventDefault(); toggleFn(); };
-                el.addEventListener('touchstart', handler, {passive: false});
-                el.addEventListener('mousedown', handler);
+                if(el) {
+                    const handler = (e) => { e.preventDefault(); toggleFn(); };
+                    el.addEventListener('touchstart', handler, {passive: false});
+                    el.addEventListener('mousedown', handler);
+                }
             };
             
             setupToggle('btn-ctrl', toggleCtrl);
             setupToggle('btn-alt', toggleAlt);
         }
 
-        // --- UI FUNCTIONS ---
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('hidden');
-        }
+        // Jalankan setup virtual keyboard secepat mungkin
+        setupVirtualKeyboard();
 
         // --- WEBSOCKET & LOGIN ---
         function login() {
@@ -525,45 +498,41 @@
             }
         }
 
-        // Menangkap ketikan pengguna (Hardware Keyboard) & menyisipkan Modifiers (CTRL/ALT)
+        // Hardware Keyboard Capture
         term.onData(data => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 let finalData = data;
-                
-                // Jika CTRL diaktifkan dari Virtual Keyboard
                 if (ctrlActive && data.length === 1) {
                     const charCode = data.toLowerCase().charCodeAt(0);
-                    if (charCode >= 97 && charCode <= 122) { 
-                        finalData = String.fromCharCode(charCode - 96); 
-                    }
-                    toggleCtrl(); // Matikan CTRL setelah dipakai
-                } 
-                // Jika ALT diaktifkan dari Virtual Keyboard
-                else if (altActive && data.length === 1) {
-                    finalData = '\x1b' + data; // Prefix untuk ALT
-                    toggleAlt(); // Matikan ALT setelah dipakai
+                    if (charCode >= 97 && charCode <= 122) finalData = String.fromCharCode(charCode - 96); 
+                    toggleCtrl();
+                } else if (altActive && data.length === 1) {
+                    finalData = '\x1b' + data; 
+                    toggleAlt();
                 }
-
                 ws.send(JSON.stringify({ type: 'input', data: finalData }));
             }
         });
 
-        // --- TAB MANAGEMENT ---
+        // --- TAB & UI MANAGEMENT ---
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebar-overlay').classList.toggle('hidden');
+        }
+
         function switchTab(tabId) {
             if(currentTab === tabId) return;
             currentTab = tabId;
             
             ['termux', 'vps1', 'vps2', 'vps3', 'github'].forEach(id => {
                 const btn = document.getElementById(`tab-${id}`);
-                btn.classList.remove('bg-gray-700', 'text-green-400', 'text-orange-400');
-                if (id === 'github') btn.classList.add('text-gray-400');
-                else btn.classList.add('text-gray-400');
+                btn.classList.remove('bg-gray-700', 'text-green-400', 'text-orange-400', 'text-gray-400');
+                if (id === tabId) {
+                    btn.classList.add('bg-gray-700', id === 'github' ? 'text-orange-400' : 'text-green-400');
+                } else {
+                    btn.classList.add('text-gray-400');
+                }
             });
-            
-            const activeBtn = document.getElementById(`tab-${tabId}`);
-            activeBtn.classList.remove('text-gray-400');
-            if(tabId === 'github') activeBtn.classList.add('bg-gray-700', 'text-orange-400');
-            else activeBtn.classList.add('bg-gray-700', 'text-green-400');
 
             document.getElementById('sidebar-title').innerText = `SESSIONS (${tabId.toUpperCase()})`;
 
@@ -593,17 +562,14 @@
         function renderSessionList(sessions) {
             const listContainer = document.getElementById('session-list');
             listContainer.innerHTML = ''; 
-
             if (!sessions || sessions.length === 0) {
                 listContainer.innerHTML = '<p class="text-gray-500 text-xs px-2 py-4">Belum ada sesi tmux.</p>';
                 return;
             }
-
             sessions.forEach(sess => {
                 const btn = document.createElement('button');
                 btn.className = 'w-full text-left px-3 py-2 rounded text-gray-400 hover:bg-gray-800 hover:text-green-400 transition';
                 btn.innerHTML = `<span class="mr-2 text-xs">●</span> ${sess}`;
-                
                 btn.onclick = () => {
                     if (ws && ws.readyState === WebSocket.OPEN) {
                         ws.send(JSON.stringify({ type: 'switch_session', name: sess, tab: currentTab }));
@@ -614,6 +580,7 @@
             });
         }
 
+        // --- UPLOAD & DOWNLOAD ---
         function triggerDownload() {
             const fileName = prompt(`Masukkan nama file yang ingin diunduh dari ${currentTab.toUpperCase()}:`, "config.py");
             if (fileName && ws && ws.readyState === WebSocket.OPEN) {
@@ -624,58 +591,45 @@
             }
         }
 
-        function triggerUpload() {
-            document.getElementById('file-uploader').click();
-        }
+        function triggerUpload() { document.getElementById('file-uploader').click(); }
 
-        // --- SISTEM UPLOAD FILE (REAL BASE64) ---
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            
-            term.write(`\r\n\x1b[33m[SYSTEM]\x1b[0m Membaca file '${file.name}' dan mengunggah ke server...\r\n`);
-            
+            term.write(`\r\n\x1b[33m[SYSTEM]\x1b[0m Membaca file '${file.name}'...\r\n`);
             const reader = new FileReader();
             reader.onload = function(e) {
-                const base64Data = e.target.result; 
                 if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.send(JSON.stringify({
-                        type: 'upload_file',
-                        filename: file.name,
-                        data: base64Data
-                    }));
+                    ws.send(JSON.stringify({ type: 'upload_file', filename: file.name, data: e.target.result }));
                 }
             };
             reader.readAsDataURL(file);
             event.target.value = ''; 
         }
 
+        // --- SESI TMUX ---
         function addSession() {
-            let sessName = prompt(`Masukkan NAMA SESI baru untuk ${currentTab.toUpperCase()}:\n(Hanya huruf, angka, & underscore. TANPA SPASI!)`, "bot_baru");
+            let sessName = prompt(`Masukkan NAMA SESI baru untuk ${currentTab.toUpperCase()}:`, "bot_baru");
             if(sessName && ws && ws.readyState === WebSocket.OPEN) {
                 sessName = sessName.replace(/[^a-zA-Z0-9_]/g, "_");
                 ws.send(JSON.stringify({ type: 'create_session', name: sessName, tab: currentTab }));
                 document.getElementById('session-list').innerHTML = `<p class="text-green-500 text-xs px-2 py-4 animate-pulse">Membuat sesi '${sessName}'...</p>`;
-            } else if (currentTab === 'github') {
-                alert("Sesi Tmux tidak bisa dibuat di Tab GitHub.");
             }
         }
 
         function deleteSession() {
-            const confirmation = confirm(`AWAS!\nApakah Anda yakin ingin MENGHAPUS sesi tmux saat ini?\n\nSemua script bot di dalamnya akan MATI (Killed).`);
-            if(confirmation && ws && ws.readyState === WebSocket.OPEN) {
+            if(confirm(`AWAS!\nYakin ingin MENGHAPUS sesi saat ini? Semua script akan MATI.`) && ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'input', data: `tmux kill-session\r` }));
                 toggleSidebar();
             }
         }
 
+        // --- GITHUB ---
         function runGit(action) {
             const gitLog = document.getElementById('git-log');
-            gitLog.innerText += `\n[TMA] Menjalankan perintah git ${action}...`;
-            
+            gitLog.innerText += `\n[TMA] Menjalankan git ${action}...`;
             if(!ws || ws.readyState !== WebSocket.OPEN) {
-                const tempWsUrl = `wss://${NGROK_URL}/ws?tab=github`;
-                const gitWs = new WebSocket(tempWsUrl);
+                const gitWs = new WebSocket(`wss://${NGROK_URL}/ws?tab=github`);
                 gitWs.onopen = () => {
                     gitWs.send(JSON.stringify({ type: 'auth', token: secretToken }));
                     gitWs.send(JSON.stringify({ type: 'git_action', action: action }));
@@ -694,138 +648,86 @@
             }
         }
 
-        // ==========================================
-        // FITUR AI GEMINI & CANVAS DIFF VIEWER
-        // ==========================================
+        // --- GEMINI AI & CANVAS ---
         let currentCanvasPayload = null;
 
         function toggleGeminiChat() {
             const modal = document.getElementById('gemini-chat-modal');
             modal.classList.toggle('hidden');
-            if(!modal.classList.contains('hidden')) {
-                document.getElementById('gemini-input').focus();
-            }
+            if(!modal.classList.contains('hidden')) document.getElementById('gemini-input').focus();
         }
 
         function geminiNewChat() {
-            document.getElementById('gemini-messages').innerHTML = `
-                <div class="flex justify-start">
-                    <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none max-w-[85%] text-gray-200">
-                        🔄 Sesi memori telah di-reset. Apa yang ingin kita kerjakan sekarang?
-                    </div>
-                </div>
-            `;
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'gemini_action', action: 'new_chat' }));
-            }
+            document.getElementById('gemini-messages').innerHTML = `<div class="flex justify-start"><div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none max-w-[85%] text-gray-200">🔄 Sesi memori telah di-reset.</div></div>`;
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'gemini_action', action: 'new_chat' }));
         }
 
         function sendGeminiMessage() {
             const inputEl = document.getElementById('gemini-input');
             const text = inputEl.value.trim();
             if(!text) return;
-
             appendGeminiMessage(text, 'user', null);
             inputEl.value = '';
+            document.getElementById('gemini-messages').insertAdjacentHTML('beforeend', `<div id="loading-${Date.now()}" class="flex justify-start"><div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none text-gray-400 italic text-xs animate-pulse">Sedang menganalisa...</div></div>`);
+            document.getElementById('gemini-messages').scrollTop = document.getElementById('gemini-messages').scrollHeight;
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'gemini_chat', text: text }));
+        }
 
-            const loadingId = 'loading-' + Date.now();
-            document.getElementById('gemini-messages').insertAdjacentHTML('beforeend', `
-                <div id="${loadingId}" class="flex justify-start">
-                    <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none text-gray-400 italic text-xs animate-pulse">
-                        Sedang menganalisa folder & terminal...
+        document.getElementById('gemini-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendGeminiMessage(); });
+
+        function appendGeminiMessage(text, role, canvasData) {
+            document.querySelectorAll('[id^="loading-"]').forEach(el => el.remove());
+            const isUser = role === 'user';
+            const msgContainer = document.getElementById('gemini-messages');
+            
+            msgContainer.insertAdjacentHTML('beforeend', `
+                <div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
+                    <div class="${isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-800 border border-gray-700 text-gray-200 rounded-tl-none'} p-3 rounded-lg max-w-[90%] whitespace-pre-wrap leading-relaxed shadow-sm">
+                        ${escapeHtml(text)}
                     </div>
                 </div>
             `);
-            scrollToBottomChat();
-
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'gemini_chat', text: text }));
-            }
-        }
-
-        document.getElementById('gemini-input').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') sendGeminiMessage();
-        });
-
-        function appendGeminiMessage(text, role, canvasData) {
-            const loadingEls = document.querySelectorAll('[id^="loading-"]');
-            loadingEls.forEach(el => el.remove());
-
-            const msgContainer = document.getElementById('gemini-messages');
-            const isUser = role === 'user';
-            
-            let html = `<div class="flex ${isUser ? 'justify-end' : 'justify-start'}">
-                <div class="${isUser ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-gray-800 border border-gray-700 text-gray-200 rounded-tl-none'} p-3 rounded-lg max-w-[90%] whitespace-pre-wrap leading-relaxed shadow-sm">
-                    ${escapeHtml(text)}
-                </div>
-            </div>`;
-
-            msgContainer.insertAdjacentHTML('beforeend', html);
 
             if(canvasData && canvasData.filename && canvasData.newCode) {
                 const canvasId = 'canvas-btn-' + Date.now();
                 window[canvasId] = canvasData; 
-                
-                const btnText = canvasData.oldCode ? "🖥️ Buka Canvas Perbandingan" : "📦 Tinjau Struktur File Baru";
-                const btnHtml = `
+                msgContainer.insertAdjacentHTML('beforeend', `
                     <div class="flex justify-start mt-1 mb-2">
                         <button onclick="openGeminiCanvas(window['${canvasId}'])" class="bg-gray-900 border border-orange-500/50 hover:bg-orange-900/40 text-orange-400 font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-2 shadow transition-colors">
-                            ${btnText}
+                            ${canvasData.oldCode ? "🖥️ Buka Canvas Perbandingan" : "📦 Tinjau File Baru"}
                         </button>
                     </div>
-                `;
-                msgContainer.insertAdjacentHTML('beforeend', btnHtml);
+                `);
             }
-
-            scrollToBottomChat();
-        }
-
-        function scrollToBottomChat() {
-            const container = document.getElementById('gemini-messages');
-            container.scrollTop = container.scrollHeight;
+            msgContainer.scrollTop = msgContainer.scrollHeight;
         }
 
         function escapeHtml(unsafe) {
-            return unsafe
-                 .replace(/&/g, "&amp;")
-                 .replace(/</g, "&lt;")
-                 .replace(/>/g, "&gt;")
-                 .replace(/"/g, "&quot;")
-                 .replace(/'/g, "&#039;");
+            return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        // --- SISTEM CANVAS (DIFF VIEWER) ---
         function openGeminiCanvas(data) {
             currentCanvasPayload = data;
             document.getElementById('canvas-filename').innerText = data.filename;
             
-            const oldCodeContainer = document.getElementById('canvas-old-code');
-            const newCodeContainer = document.getElementById('canvas-new-code');
+            const oldContainer = document.getElementById('canvas-old-code');
+            const newContainer = document.getElementById('canvas-new-code');
             
             if(!data.oldCode) {
-                oldCodeContainer.innerHTML = '<span class="text-gray-500 italic">// Tidak ada kode lama. Ini adalah pembuatan file baru.</span>';
-                newCodeContainer.innerHTML = `<span class="text-green-300">${escapeHtml(data.newCode)}</span>`;
+                oldContainer.innerHTML = '<span class="text-gray-500 italic">// Pembuatan file baru.</span>';
+                newContainer.innerHTML = `<span class="text-green-300">${escapeHtml(data.newCode)}</span>`;
                 document.getElementById('btn-apply-code').innerHTML = '✨ Buat File (Eksekusi)';
-            } 
-            else {
+            } else {
                 document.getElementById('btn-apply-code').innerHTML = '✨ Terapkan (Overwrite)';
-                
                 const diff = Diff.diffLines(data.oldCode, data.newCode);
-                let oldHtml = '';
-                let newHtml = '';
-                
+                let oldHtml = '', newHtml = '';
                 diff.forEach(part => {
-                    const colorOld = part.added ? 'hidden' : part.removed ? 'bg-red-900/60 text-red-200 block' : 'text-gray-400';
-                    const colorNew = part.removed ? 'hidden' : part.added ? 'bg-green-900/60 text-green-200 block' : 'text-gray-400';
-
-                    if (!part.added) oldHtml += `<span class="${colorOld}">${escapeHtml(part.value)}</span>`;
-                    if (!part.removed) newHtml += `<span class="${colorNew}">${escapeHtml(part.value)}</span>`;
+                    if (!part.added) oldHtml += `<span class="${part.removed ? 'bg-red-900/60 text-red-200 block' : 'text-gray-400'}">${escapeHtml(part.value)}</span>`;
+                    if (!part.removed) newHtml += `<span class="${part.added ? 'bg-green-900/60 text-green-200 block' : 'text-gray-400'}">${escapeHtml(part.value)}</span>`;
                 });
-
-                oldCodeContainer.innerHTML = oldHtml;
-                newCodeContainer.innerHTML = newHtml;
+                oldContainer.innerHTML = oldHtml;
+                newContainer.innerHTML = newHtml;
             }
-
             document.getElementById('gemini-canvas-modal').classList.remove('hidden');
         }
 
@@ -836,32 +738,15 @@
 
         function applyGeminiCode() {
             if(!currentCanvasPayload || !ws || ws.readyState !== WebSocket.OPEN) return;
-            
-            ws.send(JSON.stringify({
-                type: 'gemini_apply_code',
-                filename: currentCanvasPayload.filename,
-                newCode: currentCanvasPayload.newCode
-            }));
-
+            ws.send(JSON.stringify({ type: 'gemini_apply_code', filename: currentCanvasPayload.filename, newCode: currentCanvasPayload.newCode }));
             const btn = document.getElementById('btn-apply-code');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⏳ Menerapkan...';
-            btn.disabled = true;
-
+            btn.innerHTML = '⏳ Menerapkan...'; btn.disabled = true;
             setTimeout(() => {
                 closeGeminiCanvas();
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                
-                appendGeminiMessage(`✅ Perubahan pada '${currentCanvasPayload.filename}' berhasil disimpan ke sistem!`, 'bot', null);
+                btn.innerHTML = '✨ Terapkan (Overwrite)'; btn.disabled = false;
+                appendGeminiMessage(`✅ Perubahan disimpan!`, 'bot', null);
             }, 800);
         }
-
-        // INIT KEYBOARD PAS DOM SIAP
-        document.addEventListener('DOMContentLoaded', () => {
-            setupVirtualKeyboard();
-        });
-
     </script>
 </body>
 </html>
