@@ -163,22 +163,28 @@
             </button>
         </div>
 
-        <!-- KEYBOARD VIRTUAL (EXTRA KEYS) TIPE TERMUX -->
-        <div id="virtual-keyboard" class="bg-[#1e1e1e] border-t border-gray-800 p-1 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0 z-[35] touch-manipulation">
-            <button onclick="sendKey('\x1b')" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">ESC</button>
-            <button onclick="toggleCtrl()" id="btn-ctrl" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700 transition-colors">CTRL</button>
-            <button onclick="toggleAlt()" id="btn-alt" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700 transition-colors">ALT</button>
-            <button onclick="sendKey('\t')" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">TAB</button>
-            <button onclick="sendKey('\x1b[A')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">▲</button>
-            <button onclick="sendKey('\x1b[B')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">▼</button>
-            <button onclick="sendKey('\x1b[D')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">◄</button>
-            <button onclick="sendKey('\x1b[C')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">►</button>
-            
-            <div class="w-px bg-gray-700 mx-1"></div> <!-- Pembatas -->
-            
-            <!-- Tombol Aksi Instan (Macro) -->
-            <button onclick="sendKey('\x13')" title="Ctrl+S (Save)" class="px-3.5 py-2.5 bg-indigo-900/60 hover:bg-indigo-800 rounded text-indigo-300 font-mono text-xs font-bold active:bg-indigo-700 shrink-0 shadow border border-indigo-700/50">SAVE</button>
-            <button onclick="sendKey('\x11')" title="Ctrl+Q (Quit)" class="px-3.5 py-2.5 bg-red-900/60 hover:bg-red-800 rounded text-red-300 font-mono text-xs font-bold active:bg-red-700 shrink-0 shadow border border-red-700/50">QUIT</button>
+        <!-- KEYBOARD VIRTUAL 2 BARIS (EXTRA KEYS) TIPE TERMUX -->
+        <div id="virtual-keyboard" class="bg-[#1e1e1e] border-t border-gray-800 flex flex-col shrink-0 z-[35] touch-manipulation select-none pb-1">
+            <!-- Baris 1 -->
+            <div class="flex w-full px-1 pt-1 gap-1">
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b">ESC</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="-">-</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="/">/</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[H">HOME</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[A">▲</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[F">END</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[5~">PGUP</button>
+            </div>
+            <!-- Baris 2 -->
+            <div class="flex w-full px-1 pt-1 gap-1">
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\t">TAB</button>
+                <button id="btn-ctrl" class="flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors">CTRL</button>
+                <button id="btn-alt" class="flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors">ALT</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[D">◄</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[B">▼</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[C">►</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[6~">PGDN</button>
+            </div>
         </div>
 
         <!-- MODAL: POP-UP CHAT GEMINI -->
@@ -305,12 +311,17 @@
             }
         }, {passive: true});
 
-        // --- VIRTUAL KEYBOARD SYSTEM ---
+        // --- VIRTUAL KEYBOARD SYSTEM (AUTO-REPEAT & ANTI-TENGGELAM) ---
+        let vkRepeatInterval = null;
+        let vkRepeatTimeout = null;
+
         function toggleCtrl() {
             ctrlActive = !ctrlActive;
             const btn = document.getElementById('btn-ctrl');
             btn.classList.toggle('bg-blue-600', ctrlActive);
             btn.classList.toggle('text-white', ctrlActive);
+            btn.classList.toggle('bg-gray-800', !ctrlActive);
+            btn.classList.toggle('text-gray-300', !ctrlActive);
             if(ctrlActive) term.focus();
         }
 
@@ -319,14 +330,88 @@
             const btn = document.getElementById('btn-alt');
             btn.classList.toggle('bg-blue-600', altActive);
             btn.classList.toggle('text-white', altActive);
+            btn.classList.toggle('bg-gray-800', !altActive);
+            btn.classList.toggle('text-gray-300', !altActive);
             if(altActive) term.focus();
         }
 
-        function sendKey(hexSequence) {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'input', data: hexSequence }));
+        function startKeyRepeat(hexSequence, btnElement) {
+            let finalData = hexSequence;
+            
+            // Handle CTRL/ALT Modifiers khusus untuk tombol 1 karakter (seperti Tab atau dash)
+            if (hexSequence.length === 1) {
+                if (ctrlActive) {
+                    const charCode = hexSequence.toLowerCase().charCodeAt(0);
+                    if (charCode >= 97 && charCode <= 122) finalData = String.fromCharCode(charCode - 96); 
+                    toggleCtrl();
+                } else if (altActive) {
+                    finalData = '\x1b' + hexSequence;
+                    toggleAlt();
+                }
             }
+
+            const triggerSend = () => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'input', data: finalData }));
+                }
+            };
+
+            // Tembakan pertama instan
+            triggerSend();
+            btnElement.classList.replace('bg-gray-800', 'bg-gray-600');
             term.focus();
+
+            // Tunggu 400ms. Kalau tombol masih ditahan, mulailah berondong setiap 50ms (Auto-repeat/Looping)
+            vkRepeatTimeout = setTimeout(() => {
+                vkRepeatInterval = setInterval(triggerSend, 50);
+            }, 400);
+        }
+
+        function stopKeyRepeat(btnElement) {
+            clearTimeout(vkRepeatTimeout);
+            clearInterval(vkRepeatInterval);
+            if(btnElement) btnElement.classList.replace('bg-gray-600', 'bg-gray-800');
+        }
+
+        function setupVirtualKeyboard() {
+            const keys = document.querySelectorAll('.vk-key');
+            keys.forEach(btn => {
+                const seq = btn.getAttribute('data-key');
+                if (!seq) return;
+
+                const handlePress = (e) => {
+                    e.preventDefault(); // KUNCI UTAMA: Cegah OS menarik fokus dari terminal (anti-tenggelam)
+                    if (e.type === 'touchstart' || e.type === 'mousedown') {
+                        startKeyRepeat(seq, btn);
+                    }
+                };
+
+                const handleRelease = (e) => {
+                    e.preventDefault();
+                    stopKeyRepeat(btn);
+                };
+
+                // Event Sentuh (Mobile)
+                btn.addEventListener('touchstart', handlePress, {passive: false});
+                btn.addEventListener('touchend', handleRelease, {passive: false});
+                btn.addEventListener('touchcancel', handleRelease, {passive: false});
+
+                // Event Klik (PC/Mouse fallback)
+                btn.addEventListener('mousedown', handlePress);
+                btn.addEventListener('mouseup', handleRelease);
+                btn.addEventListener('mouseleave', handleRelease);
+            });
+
+            // Toggle Handler (CTRL/ALT) - juga butuh preventDefault
+            const setupToggle = (id, toggleFn) => {
+                const el = document.getElementById(id);
+                const handler = (e) => { e.preventDefault(); toggleFn(); };
+                el.addEventListener('touchstart', handler, {passive: false});
+                el.addEventListener('mousedown', handler);
+            };
+            
+            setupToggle('btn-ctrl', toggleCtrl);
+            setupToggle('btn-alt', toggleAlt);
         }
 
         // --- UI FUNCTIONS ---
@@ -424,7 +509,7 @@
             }
         }
 
-        // Menangkap ketikan pengguna di layar terminal & menyisipkan Modifiers (CTRL/ALT)
+        // Menangkap ketikan pengguna (Hardware Keyboard) & menyisipkan Modifiers (CTRL/ALT)
         term.onData(data => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 let finalData = data;
@@ -756,6 +841,11 @@
                 appendGeminiMessage(`✅ Perubahan pada '${currentCanvasPayload.filename}' berhasil disimpan ke sistem!`, 'bot', null);
             }, 800);
         }
+
+        // INIT KEYBOARD PAS DOM SIAP
+        document.addEventListener('DOMContentLoaded', () => {
+            setupVirtualKeyboard();
+        });
 
     </script>
 </body>
