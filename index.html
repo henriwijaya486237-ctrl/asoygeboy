@@ -192,10 +192,15 @@
             <div class="bg-gray-900 w-full sm:w-[450px] h-[85vh] sm:h-[600px] rounded-t-2xl sm:rounded-2xl flex flex-col border border-gray-700 shadow-2xl slide-up">
                 <!-- Header -->
                 <div class="p-3 border-b border-gray-800 flex justify-between items-center bg-indigo-900/40 rounded-t-2xl sm:rounded-t-2xl">
-                    <span class="font-bold text-indigo-400 flex items-center gap-2">🤖 Gemini Workspace</span>
-                    <div class="flex gap-2">
+                    <span class="font-bold text-indigo-400 flex items-center gap-2 text-sm sm:text-base">🤖 Gemini AI</span>
+                    <div class="flex gap-2 items-center">
+                        <!-- Dropdown Pilihan Model -->
+                        <select id="gemini-model-select" class="text-[10px] sm:text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 sm:px-2 py-1 outline-none max-w-[90px] sm:max-w-[120px]">
+                            <option value="gemini-1.5-pro-latest">1.5 PRO</option>
+                            <option value="gemini-1.5-flash-latest">1.5 FLASH</option>
+                        </select>
                         <button onclick="geminiNewChat()" class="text-xs px-2 py-1 bg-gray-800 rounded text-gray-300 hover:bg-indigo-500 hover:text-white transition-colors border border-gray-700 flex items-center gap-1">
-                            <span>🔄</span> New Chat
+                            <span>🔄</span> <span class="hidden sm:inline">Reset</span>
                         </button>
                         <button onclick="toggleGeminiChat()" class="text-gray-400 hover:text-white px-2 text-xl">&times;</button>
                     </div>
@@ -217,15 +222,24 @@
             </div>
         </div>
 
-        <!-- MODAL: CANVAS PERBANDINGAN KODE (DIFF VIEWER) -->
+        <!-- MODAL: CANVAS PERBANDINGAN KODE (SMART DIFF VIEWER) -->
         <div id="gemini-canvas-modal" class="absolute inset-0 z-[55] hidden bg-black flex flex-col">
             <!-- Header Canvas -->
             <div class="h-14 bg-gray-900 border-b border-gray-800 flex justify-between items-center px-4 shrink-0 shadow-lg">
-                <span class="font-bold text-orange-400 font-sans flex items-center gap-2">🖥️ Canvas Perbandingan <span id="canvas-filename" class="text-xs bg-gray-800 px-2 py-1 rounded text-gray-300 font-mono"></span></span>
+                <span class="font-bold text-orange-400 font-sans flex items-center gap-2 text-sm sm:text-base whitespace-nowrap overflow-hidden">
+                    🖥️ <span class="hidden sm:inline">Canvas</span>
+                    <span id="canvas-filename" class="text-[10px] sm:text-xs bg-gray-800 px-2 py-1 rounded text-gray-300 font-mono truncate max-w-[100px] sm:max-w-[200px]"></span>
+                    <!-- Navigasi Multi-File -->
+                    <div id="canvas-nav" class="hidden flex items-center bg-gray-800 rounded-md border border-gray-700 shrink-0">
+                        <button onclick="prevCanvasFile()" class="px-2 py-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded-l-md border-r border-gray-700 transition-colors">&lt;</button>
+                        <span id="canvas-counter" class="text-[10px] sm:text-xs text-gray-300 font-mono px-2 sm:px-3">1/1</span>
+                        <button onclick="nextCanvasFile()" class="px-2 py-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded-r-md border-l border-gray-700 transition-colors">&gt;</button>
+                    </div>
+                </span>
                 <div class="flex gap-2">
-                    <button onclick="closeGeminiCanvas()" class="px-4 py-1.5 bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 rounded-md text-sm font-bold font-sans transition-colors">Batal</button>
-                    <button onclick="applyGeminiCode()" id="btn-apply-code" class="px-4 py-1.5 bg-green-600 text-white hover:bg-green-500 rounded-md text-sm font-bold font-sans shadow transition-colors flex items-center gap-1">
-                        ✨ Terapkan (Overwrite)
+                    <button onclick="closeGeminiCanvas()" class="px-3 py-1.5 bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 rounded-md text-xs sm:text-sm font-bold font-sans transition-colors">Batal</button>
+                    <button onclick="applyGeminiCode()" id="btn-apply-code" class="px-3 py-1.5 bg-green-600 text-white hover:bg-green-500 rounded-md text-xs sm:text-sm font-bold font-sans shadow transition-colors flex items-center gap-1 whitespace-nowrap">
+                        ✨ Terapkan <span class="hidden sm:inline">Semua</span>
                     </button>
                 </div>
             </div>
@@ -234,12 +248,12 @@
                 <!-- Top: Kode Lama -->
                 <div class="flex-1 border-b-2 border-gray-700 flex flex-col min-h-0 relative">
                     <div class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-red-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🔴 Kode Asli</div>
-                    <div class="flex-1 overflow-auto bg-[#0d1117] p-4 text-xs sm:text-sm font-mono whitespace-pre" id="canvas-old-code"></div>
+                    <div class="flex-1 overflow-auto bg-[#0d1117] p-2 sm:p-4 text-[10px] sm:text-xs font-mono whitespace-pre" id="canvas-old-code"></div>
                 </div>
                 <!-- Bottom: Kode Baru -->
                 <div class="flex-1 flex flex-col min-h-0 relative">
                     <div class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-green-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🟢 Kode AI (Revisi)</div>
-                    <div class="flex-1 overflow-auto bg-[#0d1117] p-4 text-xs sm:text-sm font-mono whitespace-pre" id="canvas-new-code"></div>
+                    <div class="flex-1 overflow-auto bg-[#0d1117] p-2 sm:p-4 text-[10px] sm:text-xs font-mono whitespace-pre" id="canvas-new-code"></div>
                 </div>
             </div>
         </div>
@@ -452,6 +466,7 @@
                         fitAddon.fit();
                         ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
                         ws.send(JSON.stringify({ type: 'request_sessions', tab: currentTab }));
+                        ws.send(JSON.stringify({ type: 'request_models' })); // Tarik pilihan Model AI
                     }, 100);
 
                     pingInterval = setInterval(() => {
@@ -471,6 +486,18 @@
                         }
                         else if(data.type === 'session_list') renderSessionList(data.data);
                         else if(data.type === 'gemini_response') appendGeminiMessage(data.text, 'bot', data.canvasData);
+                        else if(data.type === 'model_list') {
+                            const selectEl = document.getElementById('gemini-model-select');
+                            if(selectEl && data.data && data.data.length > 0) {
+                                selectEl.innerHTML = '';
+                                data.data.forEach(m => {
+                                    const opt = document.createElement('option');
+                                    opt.value = m;
+                                    opt.innerText = m.replace('gemini-', '').replace('-latest', '').toUpperCase();
+                                    selectEl.appendChild(opt);
+                                });
+                            }
+                        }
                     } catch (e) { term.write(event.data); }
                 };
 
@@ -648,8 +675,9 @@
             }
         }
 
-        // --- GEMINI AI & CANVAS ---
-        let currentCanvasPayload = null;
+        // --- GEMINI AI & SMART DIFF CANVAS ---
+        let currentCanvasPayloads = [];
+        let currentCanvasIndex = 0;
 
         function toggleGeminiChat() {
             const modal = document.getElementById('gemini-chat-modal');
@@ -666,11 +694,17 @@
             const inputEl = document.getElementById('gemini-input');
             const text = inputEl.value.trim();
             if(!text) return;
+            
+            const selectedModel = document.getElementById('gemini-model-select').value;
+            
             appendGeminiMessage(text, 'user', null);
             inputEl.value = '';
             document.getElementById('gemini-messages').insertAdjacentHTML('beforeend', `<div id="loading-${Date.now()}" class="flex justify-start"><div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none text-gray-400 italic text-xs animate-pulse">Sedang menganalisa...</div></div>`);
             document.getElementById('gemini-messages').scrollTop = document.getElementById('gemini-messages').scrollHeight;
-            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'gemini_chat', text: text }));
+            
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'gemini_chat', text: text, model: selectedModel }));
+            }
         }
 
         document.getElementById('gemini-input').addEventListener('keypress', e => { if (e.key === 'Enter') sendGeminiMessage(); });
@@ -688,16 +722,28 @@
                 </div>
             `);
 
-            if(canvasData && canvasData.filename && canvasData.newCode) {
-                const canvasId = 'canvas-btn-' + Date.now();
-                window[canvasId] = canvasData; 
-                msgContainer.insertAdjacentHTML('beforeend', `
-                    <div class="flex justify-start mt-1 mb-2">
-                        <button onclick="openGeminiCanvas(window['${canvasId}'])" class="bg-gray-900 border border-orange-500/50 hover:bg-orange-900/40 text-orange-400 font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-2 shadow transition-colors">
-                            ${canvasData.oldCode ? "🖥️ Buka Canvas Perbandingan" : "📦 Tinjau File Baru"}
-                        </button>
-                    </div>
-                `);
+            if(canvasData) {
+                // Konversi menjadi array jika server mengirim objek tunggal (Legacy support)
+                const payloads = Array.isArray(canvasData) ? canvasData : [canvasData];
+                const validPayloads = payloads.filter(p => p && p.filename && p.newCode);
+                
+                if (validPayloads.length > 0) {
+                    const canvasId = 'canvas-btn-' + Date.now();
+                    window[canvasId] = validPayloads; 
+                    
+                    const isMulti = validPayloads.length > 1;
+                    const multiText = isMulti ? ` (${validPayloads.length} File)` : '';
+                    const hasModifications = validPayloads.some(p => p.oldCode);
+                    const btnText = hasModifications ? "🖥️ Buka Smart Diff Canvas" : "📦 Tinjau File Baru";
+
+                    msgContainer.insertAdjacentHTML('beforeend', `
+                        <div class="flex justify-start mt-1 mb-2">
+                            <button onclick="openGeminiCanvas(window['${canvasId}'])" class="bg-gray-900 border border-orange-500/50 hover:bg-orange-900/40 text-orange-400 font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-2 shadow transition-colors">
+                                ${btnText}${multiText}
+                            </button>
+                        </div>
+                    `);
+                }
             }
             msgContainer.scrollTop = msgContainer.scrollHeight;
         }
@@ -706,45 +752,151 @@
             return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        function openGeminiCanvas(data) {
-            currentCanvasPayload = data;
+        function openGeminiCanvas(dataArray) {
+            currentCanvasPayloads = dataArray;
+            currentCanvasIndex = 0;
+            renderCanvasContent();
+            document.getElementById('gemini-canvas-modal').classList.remove('hidden');
+        }
+
+        function prevCanvasFile() {
+            if (currentCanvasIndex > 0) {
+                currentCanvasIndex--;
+                renderCanvasContent();
+            }
+        }
+
+        function nextCanvasFile() {
+            if (currentCanvasIndex < currentCanvasPayloads.length - 1) {
+                currentCanvasIndex++;
+                renderCanvasContent();
+            }
+        }
+
+        function renderCanvasContent() {
+            const data = currentCanvasPayloads[currentCanvasIndex];
             document.getElementById('canvas-filename').innerText = data.filename;
+            
+            // Pengaturan UI Navigasi Multi-file
+            const navEl = document.getElementById('canvas-nav');
+            if (currentCanvasPayloads.length > 1) {
+                navEl.classList.remove('hidden');
+                document.getElementById('canvas-counter').innerText = `${currentCanvasIndex + 1}/${currentCanvasPayloads.length}`;
+            } else {
+                navEl.classList.add('hidden');
+            }
             
             const oldContainer = document.getElementById('canvas-old-code');
             const newContainer = document.getElementById('canvas-new-code');
+            const btnApply = document.getElementById('btn-apply-code');
+            
+            btnApply.innerHTML = currentCanvasPayloads.length > 1 ? '✨ Terapkan Semua' : '✨ Terapkan (Overwrite)';
             
             if(!data.oldCode) {
-                oldContainer.innerHTML = '<span class="text-gray-500 italic">// Pembuatan file baru.</span>';
-                newContainer.innerHTML = `<span class="text-green-300">${escapeHtml(data.newCode)}</span>`;
-                document.getElementById('btn-apply-code').innerHTML = '✨ Buat File (Eksekusi)';
+                oldContainer.innerHTML = '<div class="text-gray-500 italic px-2">// Pembuatan file baru.</div>';
+                newContainer.innerHTML = `<div class="text-green-300 px-2 whitespace-pre">${escapeHtml(data.newCode)}</div>`;
             } else {
-                document.getElementById('btn-apply-code').innerHTML = '✨ Terapkan (Overwrite)';
-                const diff = Diff.diffLines(data.oldCode, data.newCode);
-                let oldHtml = '', newHtml = '';
-                diff.forEach(part => {
-                    if (!part.added) oldHtml += `<span class="${part.removed ? 'bg-red-900/60 text-red-200 block' : 'text-gray-400'}">${escapeHtml(part.value)}</span>`;
-                    if (!part.removed) newHtml += `<span class="${part.added ? 'bg-green-900/60 text-green-200 block' : 'text-gray-400'}">${escapeHtml(part.value)}</span>`;
-                });
-                oldContainer.innerHTML = oldHtml;
-                newContainer.innerHTML = newHtml;
+                // Menjalankan algoritma Smart Diff Viewer
+                renderSmartDiff(data.oldCode, data.newCode, oldContainer, newContainer);
             }
-            document.getElementById('gemini-canvas-modal').classList.remove('hidden');
+        }
+
+        function renderSmartDiff(oldCode, newCode, oldContainer, newContainer) {
+            const diff = Diff.diffLines(oldCode, newCode);
+            let oldHtml = '';
+            let newHtml = '';
+            
+            // Berapa jumlah baris atas/bawah yang tidak berubah (sebagai konteks)
+            const CONTEXT_LINES = 3; 
+
+            // Ekstrak string multiline Diff menjadi array perbaris
+            let diffLines = [];
+            diff.forEach(part => {
+                const val = part.value.endsWith('\n') ? part.value.slice(0, -1) : part.value;
+                const lines = val.split('\n');
+                lines.forEach(line => {
+                    diffLines.push({
+                        text: line,
+                        added: part.added,
+                        removed: part.removed
+                    });
+                });
+            });
+
+            // Cari index baris yang berubah
+            let changedIndices = [];
+            diffLines.forEach((line, index) => {
+                if (line.added || line.removed) changedIndices.push(index);
+            });
+
+            // Tentukan indeks baris mana saja yang perlu dirender (Berubah + Konteks sekitarnya)
+            let visibleLines = new Set();
+            changedIndices.forEach(idx => {
+                for (let i = Math.max(0, idx - CONTEXT_LINES); i <= Math.min(diffLines.length - 1, idx + CONTEXT_LINES); i++) {
+                    visibleLines.add(i);
+                }
+            });
+
+            let lastVisible = -1;
+
+            diffLines.forEach((line, index) => {
+                if (visibleLines.has(index)) {
+                    // Jika ada lompatan nomor baris, berikan tanda separator pemisah
+                    if (lastVisible !== -1 && index > lastVisible + 1) {
+                        const hiddenCount = index - lastVisible - 1;
+                        const sep = `<div class="text-gray-600 bg-gray-800/50 text-center text-[10px] sm:text-xs py-1 my-1 border-y border-gray-700 select-none">--- ${hiddenCount} baris disembunyikan ---</div>`;
+                        oldHtml += sep;
+                        newHtml += sep;
+                    }
+                    
+                    const safeText = escapeHtml(line.text) || ' '; 
+                    
+                    // Pisahkan output ke Kontainer Lama (Removed) dan Kontainer Baru (Added)
+                    if (line.removed) {
+                        oldHtml += `<div class="bg-red-900/60 text-red-200 px-2 block">${safeText}</div>`;
+                    } else if (line.added) {
+                        newHtml += `<div class="bg-green-900/60 text-green-200 px-2 block">${safeText}</div>`;
+                    } else {
+                        // Jika baris normal, tulis di kedua kontainer
+                        oldHtml += `<div class="text-gray-400 px-2 block">${safeText}</div>`;
+                        newHtml += `<div class="text-gray-400 px-2 block">${safeText}</div>`;
+                    }
+                    
+                    lastVisible = index;
+                }
+            });
+
+            if (changedIndices.length === 0) {
+                oldHtml = '<div class="text-gray-500 italic px-2">// Tidak ada perubahan kode yang terdeteksi.</div>';
+                newHtml = '<div class="text-gray-500 italic px-2">// Tidak ada perubahan kode yang terdeteksi.</div>';
+            }
+
+            oldContainer.innerHTML = oldHtml;
+            newContainer.innerHTML = newHtml;
         }
 
         function closeGeminiCanvas() {
             document.getElementById('gemini-canvas-modal').classList.add('hidden');
-            currentCanvasPayload = null;
+            currentCanvasPayloads = [];
+            currentCanvasIndex = 0;
         }
 
         function applyGeminiCode() {
-            if(!currentCanvasPayload || !ws || ws.readyState !== WebSocket.OPEN) return;
-            ws.send(JSON.stringify({ type: 'gemini_apply_code', filename: currentCanvasPayload.filename, newCode: currentCanvasPayload.newCode }));
+            if(!currentCanvasPayloads.length || !ws || ws.readyState !== WebSocket.OPEN) return;
+            
+            // Kirim seluruh array payload agar dieksekusi bersamaan di backend
+            ws.send(JSON.stringify({ 
+                type: 'gemini_apply_code', 
+                payloads: currentCanvasPayloads 
+            }));
+            
             const btn = document.getElementById('btn-apply-code');
             btn.innerHTML = '⏳ Menerapkan...'; btn.disabled = true;
+            
             setTimeout(() => {
                 closeGeminiCanvas();
-                btn.innerHTML = '✨ Terapkan (Overwrite)'; btn.disabled = false;
-                appendGeminiMessage(`✅ Perubahan disimpan!`, 'bot', null);
+                btn.disabled = false;
+                appendGeminiMessage(`✅ Berhasil! ${currentCanvasPayloads.length} File telah di-overwrite di server.`, 'bot', null);
             }, 800);
         }
     </script>
