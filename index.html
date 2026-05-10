@@ -161,7 +161,24 @@
             <button id="gemini-fab" onclick="toggleGeminiChat()" class="absolute bottom-6 right-6 bg-indigo-600 hover:bg-indigo-500 text-white w-14 h-14 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)] z-30 hidden flex items-center justify-center text-2xl border-2 border-indigo-400/30 transition-transform active:scale-90">
                 🤖
             </button>
+        </div>
 
+        <!-- KEYBOARD VIRTUAL (EXTRA KEYS) TIPE TERMUX -->
+        <div id="virtual-keyboard" class="bg-[#1e1e1e] border-t border-gray-800 p-1 flex gap-1.5 overflow-x-auto no-scrollbar shrink-0 z-[35] touch-manipulation">
+            <button onclick="sendKey('\x1b')" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">ESC</button>
+            <button onclick="toggleCtrl()" id="btn-ctrl" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700 transition-colors">CTRL</button>
+            <button onclick="toggleAlt()" id="btn-alt" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700 transition-colors">ALT</button>
+            <button onclick="sendKey('\t')" class="px-3.5 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">TAB</button>
+            <button onclick="sendKey('\x1b[A')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">▲</button>
+            <button onclick="sendKey('\x1b[B')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">▼</button>
+            <button onclick="sendKey('\x1b[D')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">◄</button>
+            <button onclick="sendKey('\x1b[C')" class="px-4 py-2.5 bg-gray-800 hover:bg-gray-700 rounded text-gray-300 font-mono text-xs font-bold active:bg-gray-600 shrink-0 shadow border border-gray-700">►</button>
+            
+            <div class="w-px bg-gray-700 mx-1"></div> <!-- Pembatas -->
+            
+            <!-- Tombol Aksi Instan (Macro) -->
+            <button onclick="sendKey('\x13')" title="Ctrl+S (Save)" class="px-3.5 py-2.5 bg-indigo-900/60 hover:bg-indigo-800 rounded text-indigo-300 font-mono text-xs font-bold active:bg-indigo-700 shrink-0 shadow border border-indigo-700/50">SAVE</button>
+            <button onclick="sendKey('\x11')" title="Ctrl+Q (Quit)" class="px-3.5 py-2.5 bg-red-900/60 hover:bg-red-800 rounded text-red-300 font-mono text-xs font-bold active:bg-red-700 shrink-0 shadow border border-red-700/50">QUIT</button>
         </div>
 
         <!-- MODAL: POP-UP CHAT GEMINI -->
@@ -233,6 +250,11 @@
         let secretToken = '';
         let ws = null;
         let pingInterval = null;
+        
+        // State Virtual Keyboard
+        let ctrlActive = false;
+        let altActive = false;
+
         const NGROK_URL = "dispersed-yard-manger.ngrok-free.dev"; 
         
         // --- TERMINAL SETUP ---
@@ -257,6 +279,55 @@
                 }
             }
         });
+
+        // --- SISTEM TOUCH SWIPE TO SCROLL (TERKHUSUS EDITOR MICRO/NANO) ---
+        let touchStartY = 0;
+        document.getElementById('terminal-container').addEventListener('touchstart', e => {
+            if(e.touches.length === 1) {
+                touchStartY = e.touches[0].clientY;
+            }
+        }, {passive: true});
+
+        document.getElementById('terminal-container').addEventListener('touchmove', e => {
+            // Hanya aktifkan logika swipe ini JIKA terminal sedang dalam "alternate buffer" (mode text editor seperti micro/nano)
+            if (term.buffer.active.type === 'alternate' && e.touches.length === 1) {
+                const touchY = e.touches[0].clientY;
+                const deltaY = touchStartY - touchY;
+                
+                if (Math.abs(deltaY) > 15) { // Threshold/sensitivitas usapan
+                    if (ws && ws.readyState === WebSocket.OPEN) {
+                        // Swipe ke atas (deltaY positif) = Scroll / Panah ke Bawah (\x1b[B)
+                        // Swipe ke bawah (deltaY negatif) = Scroll / Panah ke Atas (\x1b[A)
+                        ws.send(JSON.stringify({ type: 'input', data: deltaY > 0 ? "\x1b[B" : "\x1b[A" }));
+                    }
+                    touchStartY = touchY; // Reset kordinat untuk melanjutkan usapan
+                }
+            }
+        }, {passive: true});
+
+        // --- VIRTUAL KEYBOARD SYSTEM ---
+        function toggleCtrl() {
+            ctrlActive = !ctrlActive;
+            const btn = document.getElementById('btn-ctrl');
+            btn.classList.toggle('bg-blue-600', ctrlActive);
+            btn.classList.toggle('text-white', ctrlActive);
+            if(ctrlActive) term.focus();
+        }
+
+        function toggleAlt() {
+            altActive = !altActive;
+            const btn = document.getElementById('btn-alt');
+            btn.classList.toggle('bg-blue-600', altActive);
+            btn.classList.toggle('text-white', altActive);
+            if(altActive) term.focus();
+        }
+
+        function sendKey(hexSequence) {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'input', data: hexSequence }));
+            }
+            term.focus();
+        }
 
         // --- UI FUNCTIONS ---
         function toggleSidebar() {
@@ -283,6 +354,7 @@
             if (currentTab === 'github') {
                 document.getElementById('terminal-overlay').classList.add('hidden');
                 document.getElementById('gemini-fab').classList.add('hidden');
+                document.getElementById('virtual-keyboard').classList.add('hidden');
                 return; 
             }
 
@@ -298,8 +370,8 @@
                     document.getElementById('app-screen').classList.remove('hidden');
                     document.getElementById('terminal-overlay').classList.add('hidden');
                     
-                    // Tampilkan tombol FAB Gemini
                     document.getElementById('gemini-fab').classList.remove('hidden');
+                    document.getElementById('virtual-keyboard').classList.remove('hidden');
                     
                     term.clear();
                     setTimeout(() => {
@@ -324,11 +396,7 @@
                             gitLog.scrollTop = gitLog.scrollHeight;
                         }
                         else if(data.type === 'session_list') renderSessionList(data.data);
-                        
-                        // Menangkap balasan dari Gemini
-                        else if(data.type === 'gemini_response') {
-                            appendGeminiMessage(data.text, 'bot', data.canvasData);
-                        }
+                        else if(data.type === 'gemini_response') appendGeminiMessage(data.text, 'bot', data.canvasData);
                     } catch (e) { term.write(event.data); }
                 };
 
@@ -337,6 +405,7 @@
                     if (currentTab !== 'github') {
                         document.getElementById('terminal-overlay').classList.remove('hidden');
                         document.getElementById('gemini-fab').classList.add('hidden');
+                        document.getElementById('virtual-keyboard').classList.add('hidden');
                         document.getElementById('overlay-text').innerText = "Connection lost. Retrying...";
                         
                         if(event.code === 4001 || document.getElementById('app-screen').classList.contains('hidden')) {
@@ -355,9 +424,27 @@
             }
         }
 
+        // Menangkap ketikan pengguna di layar terminal & menyisipkan Modifiers (CTRL/ALT)
         term.onData(data => {
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'input', data: data }));
+                let finalData = data;
+                
+                // Jika CTRL diaktifkan dari Virtual Keyboard
+                if (ctrlActive && data.length === 1) {
+                    const charCode = data.toLowerCase().charCodeAt(0);
+                    // Jika menekan huruf a-z (97-122), ubah menjadi karakter Ctrl (\x01 ke \x1a)
+                    if (charCode >= 97 && charCode <= 122) { 
+                        finalData = String.fromCharCode(charCode - 96); 
+                    }
+                    toggleCtrl(); // Matikan CTRL setelah dipakai 1 kali
+                } 
+                // Jika ALT diaktifkan dari Virtual Keyboard
+                else if (altActive && data.length === 1) {
+                    finalData = '\x1b' + data; // Prefix untuk ALT
+                    toggleAlt(); // Matikan ALT setelah dipakai 1 kali
+                }
+
+                ws.send(JSON.stringify({ type: 'input', data: finalData }));
             }
         });
 
@@ -385,11 +472,13 @@
                 document.getElementById('github-container').classList.remove('hidden');
                 document.getElementById('terminal-overlay').classList.add('hidden');
                 document.getElementById('gemini-fab').classList.add('hidden');
+                document.getElementById('virtual-keyboard').classList.add('hidden');
                 if(ws) ws.close();
             } else {
                 document.getElementById('terminal-container').style.display = 'block';
                 document.getElementById('github-container').classList.add('hidden');
                 document.getElementById('terminal-overlay').classList.remove('hidden');
+                document.getElementById('virtual-keyboard').classList.remove('hidden');
                 document.getElementById('overlay-text').innerText = `Switching to ${tabId}...`;
                 connectWebSocket();
             }
@@ -439,11 +528,26 @@
             document.getElementById('file-uploader').click();
         }
 
+        // --- SISTEM UPLOAD FILE (REAL BASE64) ---
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
-            alert(`Sistem siap mengunggah: ${file.name}\n(Catatan: Fitur transfer base64 ke terminal.py segera aktif di tahap backend selanjutnya)`);
-            event.target.value = '';
+            
+            term.write(`\r\n\x1b[33m[SYSTEM]\x1b[0m Membaca file '${file.name}' dan mengunggah ke server...\r\n`);
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Data = e.target.result; // Memuat data string base64 utuh
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'upload_file',
+                        filename: file.name,
+                        data: base64Data
+                    }));
+                }
+            };
+            reader.readAsDataURL(file);
+            event.target.value = ''; // Reset input
         }
 
         function addSession() {
@@ -521,11 +625,9 @@
             const text = inputEl.value.trim();
             if(!text) return;
 
-            // Render pesan user di UI
             appendGeminiMessage(text, 'user', null);
             inputEl.value = '';
 
-            // Render efek loading bot
             const loadingId = 'loading-' + Date.now();
             document.getElementById('gemini-messages').insertAdjacentHTML('beforeend', `
                 <div id="${loadingId}" class="flex justify-start">
@@ -536,19 +638,16 @@
             `);
             scrollToBottomChat();
 
-            // Kirim ke backend
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'gemini_chat', text: text }));
             }
         }
 
-        // Enter untuk mengirim pesan
         document.getElementById('gemini-input').addEventListener('keypress', function (e) {
             if (e.key === 'Enter') sendGeminiMessage();
         });
 
         function appendGeminiMessage(text, role, canvasData) {
-            // Hapus indikator loading jika ada
             const loadingEls = document.querySelectorAll('[id^="loading-"]');
             loadingEls.forEach(el => el.remove());
 
@@ -563,9 +662,7 @@
 
             msgContainer.insertAdjacentHTML('beforeend', html);
 
-            // Jika backend membalas dengan membawa revisi kode (Diff View / Scaffolding)
             if(canvasData && canvasData.filename && canvasData.newCode) {
-                // Simpan payload untuk digunakan saat tombol diklik
                 const canvasId = 'canvas-btn-' + Date.now();
                 window[canvasId] = canvasData; 
                 
@@ -588,7 +685,6 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // Fungsi Helper untuk mencegah XSS
         function escapeHtml(unsafe) {
             return unsafe
                  .replace(/&/g, "&amp;")
@@ -606,13 +702,11 @@
             const oldCodeContainer = document.getElementById('canvas-old-code');
             const newCodeContainer = document.getElementById('canvas-new-code');
             
-            // Mode Scaffolding (File Baru)
             if(!data.oldCode) {
                 oldCodeContainer.innerHTML = '<span class="text-gray-500 italic">// Tidak ada kode lama. Ini adalah pembuatan file baru.</span>';
                 newCodeContainer.innerHTML = `<span class="text-green-300">${escapeHtml(data.newCode)}</span>`;
                 document.getElementById('btn-apply-code').innerHTML = '✨ Buat File (Eksekusi)';
             } 
-            // Mode Revisi (Diff Merah/Hijau Menggunakan jsDiff)
             else {
                 document.getElementById('btn-apply-code').innerHTML = '✨ Terapkan (Overwrite)';
                 
@@ -621,9 +715,7 @@
                 let newHtml = '';
                 
                 diff.forEach(part => {
-                    // Blok merah untuk kode yang dihapus
                     const colorOld = part.added ? 'hidden' : part.removed ? 'bg-red-900/60 text-red-200 block' : 'text-gray-400';
-                    // Blok hijau untuk kode yang ditambah
                     const colorNew = part.removed ? 'hidden' : part.added ? 'bg-green-900/60 text-green-200 block' : 'text-gray-400';
 
                     if (!part.added) oldHtml += `<span class="${colorOld}">${escapeHtml(part.value)}</span>`;
@@ -634,7 +726,6 @@
                 newCodeContainer.innerHTML = newHtml;
             }
 
-            // Tampilkan Modal Canvas
             document.getElementById('gemini-canvas-modal').classList.remove('hidden');
         }
 
@@ -646,14 +737,12 @@
         function applyGeminiCode() {
             if(!currentCanvasPayload || !ws || ws.readyState !== WebSocket.OPEN) return;
             
-            // Kirim instruksi overwrite ke backend Python
             ws.send(JSON.stringify({
                 type: 'gemini_apply_code',
                 filename: currentCanvasPayload.filename,
                 newCode: currentCanvasPayload.newCode
             }));
 
-            // Ubah teks tombol jadi loading
             const btn = document.getElementById('btn-apply-code');
             const originalText = btn.innerHTML;
             btn.innerHTML = '⏳ Menerapkan...';
@@ -664,7 +753,6 @@
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 
-                // Beri tahu user di chat pop-up
                 appendGeminiMessage(`✅ Perubahan pada '${currentCanvasPayload.filename}' berhasil disimpan ke sistem!`, 'bot', null);
             }, 800);
         }
