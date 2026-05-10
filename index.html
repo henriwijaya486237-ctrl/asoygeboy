@@ -167,23 +167,23 @@
         <div id="virtual-keyboard" class="bg-[#1e1e1e] border-t border-gray-800 flex flex-col shrink-0 z-[35] touch-manipulation select-none pb-1">
             <!-- Baris 1 -->
             <div class="flex w-full px-1 pt-1 gap-1">
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b">ESC</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="ESC">ESC</button>
                 <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="-">-</button>
                 <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="/">/</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[H">HOME</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[A">▲</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[F">END</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[5~">PGUP</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="HOME">HOME</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="UP">▲</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="END">END</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="PGUP">PGUP</button>
             </div>
             <!-- Baris 2 -->
             <div class="flex w-full px-1 pt-1 gap-1">
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\t">TAB</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="TAB">TAB</button>
                 <button id="btn-ctrl" class="flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors">CTRL</button>
                 <button id="btn-alt" class="flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors">ALT</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[D">◄</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[B">▼</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[C">►</button>
-                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="\x1b[6~">PGDN</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="LEFT">◄</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="DOWN">▼</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="RIGHT">►</button>
+                <button class="vk-key flex-1 py-2 bg-gray-800 text-gray-300 font-mono text-[11px] font-bold border border-gray-700 rounded shadow-sm transition-colors" data-key="PGDN">PGDN</button>
             </div>
         </div>
 
@@ -302,8 +302,7 @@
                 
                 if (Math.abs(deltaY) > 15) { // Threshold/sensitivitas usapan
                     if (ws && ws.readyState === WebSocket.OPEN) {
-                        // Swipe ke atas (deltaY positif) = Scroll / Panah ke Bawah (\x1b[B)
-                        // Swipe ke bawah (deltaY negatif) = Scroll / Panah ke Atas (\x1b[A)
+                        // FIX: Mengirim instruksi escape sequence yang benar
                         ws.send(JSON.stringify({ type: 'input', data: deltaY > 0 ? "\x1b[B" : "\x1b[A" }));
                     }
                     touchStartY = touchY; // Reset kordinat untuk melanjutkan usapan
@@ -314,6 +313,22 @@
         // --- VIRTUAL KEYBOARD SYSTEM (AUTO-REPEAT & ANTI-TENGGELAM) ---
         let vkRepeatInterval = null;
         let vkRepeatTimeout = null;
+
+        // Map kode tombol ke escape sequence yang benar
+        const KEY_MAP = {
+            'ESC': '\x1b',
+            'TAB': '\t',
+            'UP': '\x1b[A',
+            'DOWN': '\x1b[B',
+            'RIGHT': '\x1b[C',
+            'LEFT': '\x1b[D',
+            'HOME': '\x1b[H',
+            'END': '\x1b[F',
+            'PGUP': '\x1b[5~',
+            'PGDN': '\x1b[6~',
+            '-': '-',
+            '/': '/'
+        };
 
         function toggleCtrl() {
             ctrlActive = !ctrlActive;
@@ -335,17 +350,18 @@
             if(altActive) term.focus();
         }
 
-        function startKeyRepeat(hexSequence, btnElement) {
-            let finalData = hexSequence;
+        function startKeyRepeat(keyName, btnElement) {
+            let finalData = KEY_MAP[keyName];
+            if(!finalData) return;
             
-            // Handle CTRL/ALT Modifiers khusus untuk tombol 1 karakter (seperti Tab atau dash)
-            if (hexSequence.length === 1) {
+            // Handle CTRL/ALT Modifiers khusus untuk tombol tunggal (- atau /)
+            if (finalData.length === 1 && keyName !== 'ESC' && keyName !== 'TAB') {
                 if (ctrlActive) {
-                    const charCode = hexSequence.toLowerCase().charCodeAt(0);
+                    const charCode = finalData.toLowerCase().charCodeAt(0);
                     if (charCode >= 97 && charCode <= 122) finalData = String.fromCharCode(charCode - 96); 
                     toggleCtrl();
                 } else if (altActive) {
-                    finalData = '\x1b' + hexSequence;
+                    finalData = '\x1b' + finalData;
                     toggleAlt();
                 }
             }
@@ -361,7 +377,7 @@
             btnElement.classList.replace('bg-gray-800', 'bg-gray-600');
             term.focus();
 
-            // Tunggu 400ms. Kalau tombol masih ditahan, mulailah berondong setiap 50ms (Auto-repeat/Looping)
+            // Auto-repeat/Looping untuk men-scroll baris jika ditahan
             vkRepeatTimeout = setTimeout(() => {
                 vkRepeatInterval = setInterval(triggerSend, 50);
             }, 400);
@@ -376,13 +392,13 @@
         function setupVirtualKeyboard() {
             const keys = document.querySelectorAll('.vk-key');
             keys.forEach(btn => {
-                const seq = btn.getAttribute('data-key');
-                if (!seq) return;
+                const keyName = btn.getAttribute('data-key');
+                if (!keyName) return;
 
                 const handlePress = (e) => {
-                    e.preventDefault(); // KUNCI UTAMA: Cegah OS menarik fokus dari terminal (anti-tenggelam)
+                    e.preventDefault(); // KUNCI UTAMA: Cegah OS menarik fokus dari terminal
                     if (e.type === 'touchstart' || e.type === 'mousedown') {
-                        startKeyRepeat(seq, btn);
+                        startKeyRepeat(keyName, btn);
                     }
                 };
 
@@ -402,7 +418,7 @@
                 btn.addEventListener('mouseleave', handleRelease);
             });
 
-            // Toggle Handler (CTRL/ALT) - juga butuh preventDefault
+            // Toggle Handler (CTRL/ALT) - butuh preventDefault agar keyboard utama tidak mati
             const setupToggle = (id, toggleFn) => {
                 const el = document.getElementById(id);
                 const handler = (e) => { e.preventDefault(); toggleFn(); };
@@ -517,16 +533,15 @@
                 // Jika CTRL diaktifkan dari Virtual Keyboard
                 if (ctrlActive && data.length === 1) {
                     const charCode = data.toLowerCase().charCodeAt(0);
-                    // Jika menekan huruf a-z (97-122), ubah menjadi karakter Ctrl (\x01 ke \x1a)
                     if (charCode >= 97 && charCode <= 122) { 
                         finalData = String.fromCharCode(charCode - 96); 
                     }
-                    toggleCtrl(); // Matikan CTRL setelah dipakai 1 kali
+                    toggleCtrl(); // Matikan CTRL setelah dipakai
                 } 
                 // Jika ALT diaktifkan dari Virtual Keyboard
                 else if (altActive && data.length === 1) {
                     finalData = '\x1b' + data; // Prefix untuk ALT
-                    toggleAlt(); // Matikan ALT setelah dipakai 1 kali
+                    toggleAlt(); // Matikan ALT setelah dipakai
                 }
 
                 ws.send(JSON.stringify({ type: 'input', data: finalData }));
@@ -622,7 +637,7 @@
             
             const reader = new FileReader();
             reader.onload = function(e) {
-                const base64Data = e.target.result; // Memuat data string base64 utuh
+                const base64Data = e.target.result; 
                 if (ws && ws.readyState === WebSocket.OPEN) {
                     ws.send(JSON.stringify({
                         type: 'upload_file',
@@ -632,7 +647,7 @@
                 }
             };
             reader.readAsDataURL(file);
-            event.target.value = ''; // Reset input
+            event.target.value = ''; 
         }
 
         function addSession() {
