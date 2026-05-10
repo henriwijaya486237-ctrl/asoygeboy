@@ -194,8 +194,13 @@
                 <div class="p-3 border-b border-gray-800 flex justify-between items-center bg-indigo-900/40 rounded-t-2xl sm:rounded-t-2xl">
                     <span class="font-bold text-indigo-400 flex items-center gap-2 text-sm sm:text-base">🤖 Gemini AI</span>
                     <div class="flex gap-2 items-center">
+                        <!-- Dropdown Pilihan Mode: Full File vs Block Code -->
+                        <select id="gemini-mode-select" class="text-[10px] sm:text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 sm:px-2 py-1 outline-none max-w-[90px] sm:max-w-[110px]" title="Mode Eksekusi File">
+                            <option value="full">📝 Full File</option>
+                            <option value="block">🧩 Block Code</option>
+                        </select>
                         <!-- Dropdown Pilihan Model -->
-                        <select id="gemini-model-select" class="text-[10px] sm:text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 sm:px-2 py-1 outline-none max-w-[90px] sm:max-w-[120px]">
+                        <select id="gemini-model-select" class="text-[10px] sm:text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 sm:px-2 py-1 outline-none max-w-[80px] sm:max-w-[100px]" title="Pilih Model AI">
                             <option value="gemini-1.5-pro-latest">1.5 PRO</option>
                             <option value="gemini-1.5-flash-latest">1.5 FLASH</option>
                         </select>
@@ -247,12 +252,12 @@
             <div class="flex-1 flex flex-col overflow-hidden">
                 <!-- Top: Kode Lama -->
                 <div class="flex-1 border-b-2 border-gray-700 flex flex-col min-h-0 relative">
-                    <div class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-red-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🔴 Kode Asli</div>
+                    <div id="canvas-title-old" class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-red-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🔴 Kode Asli</div>
                     <div class="flex-1 overflow-auto bg-[#0d1117] p-2 sm:p-4 text-[10px] sm:text-xs font-mono whitespace-pre" id="canvas-old-code"></div>
                 </div>
                 <!-- Bottom: Kode Baru -->
                 <div class="flex-1 flex flex-col min-h-0 relative">
-                    <div class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-green-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🟢 Kode AI (Revisi)</div>
+                    <div id="canvas-title-new" class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-green-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🟢 Kode AI (Revisi)</div>
                     <div class="flex-1 overflow-auto bg-[#0d1117] p-2 sm:p-4 text-[10px] sm:text-xs font-mono whitespace-pre" id="canvas-new-code"></div>
                 </div>
             </div>
@@ -696,6 +701,7 @@
             if(!text) return;
             
             const selectedModel = document.getElementById('gemini-model-select').value;
+            const selectedMode = document.getElementById('gemini-mode-select').value;
             
             appendGeminiMessage(text, 'user', null);
             inputEl.value = '';
@@ -703,7 +709,8 @@
             document.getElementById('gemini-messages').scrollTop = document.getElementById('gemini-messages').scrollHeight;
             
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(JSON.stringify({ type: 'gemini_chat', text: text, model: selectedModel }));
+                // Menambahkan pengiriman data Mode (Full atau Block)
+                ws.send(JSON.stringify({ type: 'gemini_chat', text: text, model: selectedModel, mode: selectedMode }));
             }
         }
 
@@ -790,6 +797,11 @@
             const newContainer = document.getElementById('canvas-new-code');
             const btnApply = document.getElementById('btn-apply-code');
             
+            // Menyesuaikan Judul Label berdasarkan Mode (Dikirim dari backend)
+            const isBlockMode = data.mode === 'block';
+            document.getElementById('canvas-title-old').innerText = isBlockMode ? '🔴 Blok Target (Search)' : '🔴 Kode Asli';
+            document.getElementById('canvas-title-new').innerText = isBlockMode ? '🟢 Blok Revisi (Replace)' : '🟢 Kode AI (Revisi)';
+
             btnApply.innerHTML = currentCanvasPayloads.length > 1 ? '✨ Terapkan Semua' : '✨ Terapkan (Overwrite)';
             
             if(!data.oldCode) {
