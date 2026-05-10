@@ -68,7 +68,7 @@
     <div id="app-screen" class="hidden h-full w-full flex flex-col relative">
         
         <!-- HEADER: TABS & GLOBAL ACTIONS -->
-        <div class="flex items-center justify-between bg-gray-900 border-b border-gray-800 px-2 py-2 shrink-0 h-14">
+        <div class="flex items-center justify-between bg-gray-900 border-b border-gray-800 px-2 py-2 shrink-0 h-14 z-30">
             
             <!-- Kiri: Hamburger + Tabs -->
             <div class="flex items-center flex-1 overflow-hidden">
@@ -85,39 +85,35 @@
                 </div>
             </div>
 
-            <!-- Kanan: Upload & Download (Ada di Semua Tab) -->
+            <!-- Kanan: Upload & Download -->
             <div class="flex gap-2 shrink-0 ml-2">
                 <button onclick="triggerUpload()" title="Upload File" class="bg-blue-600/80 hover:bg-blue-500 text-white p-2 rounded shadow text-sm">📤</button>
                 <button onclick="triggerDownload()" title="Download File" class="bg-green-600/80 hover:bg-green-500 text-white p-2 rounded shadow text-sm">📥</button>
             </div>
             
-            <!-- Hidden Input File untuk Upload -->
             <input type="file" id="file-uploader" class="hidden" onchange="handleFileUpload(event)">
         </div>
 
-        <!-- SIDEBAR / DRAWER SESSIONS (Spesifik per Tab) -->
+        <!-- SIDEBAR / DRAWER SESSIONS -->
         <div id="sidebar" class="absolute inset-y-0 left-0 w-64 bg-gray-900 border-r border-gray-800 z-[45] shadow-2xl flex flex-col pt-14">
             <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-black/20">
                 <span class="text-green-400 font-bold" id="sidebar-title">SESSIONS (Termux)</span>
                 <button onclick="toggleSidebar()" class="text-gray-400 hover:text-white">&times;</button>
             </div>
             
-            <!-- Daftar Sesi Tmux (Diisi via JavaScript) -->
             <div class="flex-1 overflow-y-auto p-2 space-y-1 font-mono text-sm" id="session-list">
                 <p class="text-gray-500 text-xs px-2 py-4">Memuat sesi...</p>
             </div>
             
-            <!-- Tombol Statis Tambah & Hapus Sesi di Bawah -->
             <div class="p-3 border-t border-gray-800 grid grid-cols-2 gap-2 bg-black/40">
                 <button onclick="addSession()" class="text-xs border border-green-600 text-green-400 py-2 rounded hover:bg-green-900 font-bold tracking-wide">+ SESI BARU</button>
                 <button onclick="deleteSession()" class="text-xs border border-red-600 text-red-400 py-2 rounded hover:bg-red-900 font-bold tracking-wide">- HAPUS</button>
             </div>
         </div>
 
-        <!-- Lapisan Gelap saat sidebar buka -->
         <div id="sidebar-overlay" onclick="toggleSidebar()" class="absolute inset-0 z-[40] hidden bg-black/50 backdrop-blur-sm"></div>
 
-        <!-- AREA KONTEN UTAMA (Terminal & GitHub) -->
+        <!-- AREA KONTEN UTAMA -->
         <div class="flex-1 relative overflow-hidden bg-black">
             
             <!-- Terminal Container (Xterm.js) -->
@@ -128,33 +124,39 @@
                 <p class="text-green-500" id="overlay-text">Connecting...</p>
             </div>
 
-            <!-- GitHub Panel Container -->
-            <div id="github-container" class="absolute inset-0 hidden bg-black p-4 z-20 overflow-y-auto font-mono">
-                <div class="max-w-3xl mx-auto">
-                    <h2 class="text-orange-400 mb-6 text-2xl font-bold border-b border-gray-800 pb-2">🐙 GitHub Repository Manager</h2>
-                    <p class="text-gray-400 text-sm mb-6">Sinkronisasi kode dari/ke GitHub dengan satu klik. Pastikan Token di config.py sudah diatur.</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <button onclick="runGit('pull')" class="border border-orange-500 p-6 rounded-lg hover:bg-orange-900/50 transition flex flex-col items-center justify-center gap-2 group">
-                            <span class="text-3xl group-hover:-translate-y-1 transition-transform">⬇️</span>
-                            <span class="font-bold text-orange-400 text-lg">PULL UPDATES</span>
-                            <span class="text-xs text-gray-500 text-center">Tarik kode terbaru dari GitHub ke server</span>
-                        </button>
-                        <button onclick="runGit('push')" class="border border-green-500 p-6 rounded-lg hover:bg-green-900/50 transition flex flex-col items-center justify-center gap-2 group">
-                            <span class="text-3xl group-hover:-translate-y-1 transition-transform">⬆️</span>
-                            <span class="font-bold text-green-400 text-lg">PUSH CHANGES</span>
-                            <span class="text-xs text-gray-500 text-center">Upload revisi kode server ke GitHub (Auto Commit)</span>
-                        </button>
+            <!-- GITHUB PANEL CONTAINER (BARU) -->
+            <div id="github-container" class="absolute inset-0 hidden bg-black p-2 sm:p-4 z-20 overflow-hidden font-sans flex flex-col">
+                <div class="max-w-4xl mx-auto w-full h-full flex flex-col">
+                    <!-- GitHub Header / Breadcrumbs -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-900 p-3 rounded-t-lg border border-gray-800 shrink-0 gap-3">
+                        <div class="flex flex-wrap items-center gap-2 text-sm font-bold text-gray-300" id="gh-breadcrumb">
+                            <!-- Diisi oleh Javascript -->
+                        </div>
+                        <div id="gh-actions" class="flex flex-wrap gap-2 shrink-0">
+                            <!-- Tombol Aksi GitHub -->
+                        </div>
                     </div>
                     
-                    <div class="mt-8 border border-gray-800 rounded-lg bg-gray-900/50 flex flex-col">
-                        <div class="bg-gray-800 px-4 py-2 border-b border-gray-700 text-xs text-gray-400 font-bold flex justify-between">
-                            <span>GIT LOG OUTPUT</span>
-                            <button onclick="runGit('status')" class="hover:text-white">Cek Status</button>
-                        </div>
-                        <div id="git-log" class="p-4 text-xs text-gray-300 h-48 overflow-y-auto whitespace-pre-wrap">Menunggu perintah aksi git...</div>
+                    <!-- Area List File / Repo -->
+                    <div class="flex-1 bg-[#0d1117] border-x border-b border-gray-800 rounded-b-lg overflow-y-auto p-2" id="gh-content-area">
+                        <!-- Konten Diisi JavaScript -->
                     </div>
                 </div>
+            </div>
+
+            <!-- GITHUB CODE EDITOR MODAL -->
+            <div id="gh-editor-modal" class="absolute inset-0 z-[60] hidden bg-black flex flex-col font-sans">
+                <div class="h-14 bg-gray-900 border-b border-gray-800 flex justify-between items-center px-4 shrink-0 shadow-lg">
+                    <span class="font-bold text-orange-400 text-sm flex items-center gap-2">
+                        ✏️ <span id="gh-editor-title" class="truncate max-w-[150px] sm:max-w-md text-gray-300 font-mono text-xs">Edit File</span>
+                    </span>
+                    <div class="flex gap-2">
+                        <button onclick="closeGhEditor()" class="px-3 py-1.5 bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-700 rounded-md text-xs sm:text-sm font-bold transition-colors">Batal</button>
+                        <button onclick="saveGhEditor()" class="px-3 py-1.5 bg-green-600 hover:bg-green-500 text-white rounded-md text-xs sm:text-sm font-bold shadow transition-colors flex items-center gap-1">💾 Simpan (Commit)</button>
+                    </div>
+                </div>
+                <!-- Textarea Khusus Editor Kode -->
+                <textarea id="gh-editor-textarea" class="flex-1 w-full bg-[#0d1117] text-gray-300 p-4 font-mono text-sm focus:outline-none resize-none no-scrollbar leading-relaxed" spellcheck="false" placeholder="Tulis atau edit kode di sini..."></textarea>
             </div>
 
             <!-- FAB: Tombol Melayang Gemini -->
@@ -163,7 +165,7 @@
             </button>
         </div>
 
-        <!-- KEYBOARD VIRTUAL 2 BARIS (EXTRA KEYS) TIPE TERMUX -->
+        <!-- KEYBOARD VIRTUAL -->
         <div id="virtual-keyboard" class="bg-[#1e1e1e] border-t border-gray-800 flex flex-col shrink-0 z-[35] touch-manipulation select-none pb-1 hidden">
             <!-- Baris 1 -->
             <div class="flex w-full px-1 pt-1 gap-1">
@@ -189,17 +191,16 @@
 
         <!-- MODAL: POP-UP CHAT GEMINI -->
         <div id="gemini-chat-modal" class="absolute inset-0 z-[50] hidden bg-black/60 backdrop-blur-sm flex justify-center items-end sm:items-center">
+            <!-- Isi Chat Modal -->
             <div class="bg-gray-900 w-full sm:w-[450px] h-[85vh] sm:h-[600px] rounded-t-2xl sm:rounded-2xl flex flex-col border border-gray-700 shadow-2xl slide-up">
                 <!-- Header -->
                 <div class="p-3 border-b border-gray-800 flex justify-between items-center bg-indigo-900/40 rounded-t-2xl sm:rounded-t-2xl">
                     <span class="font-bold text-indigo-400 flex items-center gap-2 text-sm sm:text-base">🤖 Gemini AI</span>
                     <div class="flex gap-2 items-center">
-                        <!-- Dropdown Pilihan Mode: Full File vs Block Code -->
                         <select id="gemini-mode-select" class="text-[10px] sm:text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 sm:px-2 py-1 outline-none max-w-[90px] sm:max-w-[110px]" title="Mode Eksekusi File">
                             <option value="full">📝 Full File</option>
                             <option value="block">🧩 Block Code</option>
                         </select>
-                        <!-- Dropdown Pilihan Model -->
                         <select id="gemini-model-select" class="text-[10px] sm:text-xs bg-gray-800 text-gray-300 border border-gray-700 rounded px-1 sm:px-2 py-1 outline-none max-w-[80px] sm:max-w-[100px]" title="Pilih Model AI">
                             <option value="gemini-1.5-pro-latest">1.5 PRO</option>
                             <option value="gemini-1.5-flash-latest">1.5 FLASH</option>
@@ -210,9 +211,8 @@
                         <button onclick="toggleGeminiChat()" class="text-gray-400 hover:text-white px-2 text-xl">&times;</button>
                     </div>
                 </div>
-                <!-- Area Pesan (Scrollable) -->
+                <!-- Area Pesan -->
                 <div id="gemini-messages" class="flex-1 overflow-y-auto p-4 text-sm font-sans flex flex-col gap-4">
-                    <!-- Pesan Awal -->
                     <div class="flex justify-start">
                         <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none max-w-[85%] text-gray-200">
                             Halo Bos! Saya siap menganalisa terminal dan membaca isi folder saat ini. Apa yang ingin diperbaiki atau dibuat hari ini?
@@ -227,9 +227,8 @@
             </div>
         </div>
 
-        <!-- MODAL: CANVAS PERBANDINGAN KODE (SMART DIFF VIEWER) -->
+        <!-- MODAL: CANVAS PERBANDINGAN KODE -->
         <div id="gemini-canvas-modal" class="absolute inset-0 z-[55] hidden bg-black flex flex-col">
-            <!-- Header Canvas -->
             <div class="h-14 bg-gray-900 border-b border-gray-800 flex justify-between items-center px-4 shrink-0 shadow-lg">
                 <span class="font-bold text-orange-400 font-sans flex items-center gap-2 text-sm sm:text-base whitespace-nowrap overflow-hidden">
                     🖥️ <span class="hidden sm:inline">Canvas</span>
@@ -250,12 +249,10 @@
             </div>
             <!-- Split View: Atas Bawah -->
             <div class="flex-1 flex flex-col overflow-hidden">
-                <!-- Top: Kode Lama -->
                 <div class="flex-1 border-b-2 border-gray-700 flex flex-col min-h-0 relative">
                     <div id="canvas-title-old" class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-red-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🔴 Kode Asli</div>
                     <div class="flex-1 overflow-auto bg-[#0d1117] p-2 sm:p-4 text-[10px] sm:text-xs font-mono whitespace-pre" id="canvas-old-code"></div>
                 </div>
-                <!-- Bottom: Kode Baru -->
                 <div class="flex-1 flex flex-col min-h-0 relative">
                     <div id="canvas-title-new" class="absolute top-0 right-0 bg-gray-800/80 px-3 py-1 text-xs text-green-400 font-bold z-10 rounded-bl-lg backdrop-blur shadow">🟢 Kode AI (Revisi)</div>
                     <div class="flex-1 overflow-auto bg-[#0d1117] p-2 sm:p-4 text-[10px] sm:text-xs font-mono whitespace-pre" id="canvas-new-code"></div>
@@ -427,7 +424,6 @@
             setupToggle('btn-alt', toggleAlt);
         }
 
-        // Jalankan setup virtual keyboard secepat mungkin
         setupVirtualKeyboard();
 
         // --- WEBSOCKET & LOGIN ---
@@ -444,11 +440,13 @@
             if (ws) { ws.onclose = null; ws.close(); }
             if (pingInterval) clearInterval(pingInterval);
 
+            // Hide terminal components if opening GitHub tab
             if (currentTab === 'github') {
                 document.getElementById('terminal-overlay').classList.add('hidden');
                 document.getElementById('gemini-fab').classList.add('hidden');
                 document.getElementById('virtual-keyboard').classList.add('hidden');
-                return; 
+            } else {
+                document.getElementById('terminal-overlay').classList.remove('hidden');
             }
 
             const wsUrl = `wss://${NGROK_URL}/ws?tab=${currentTab}`;
@@ -461,18 +459,24 @@
                     
                     document.getElementById('login-screen').classList.add('hidden');
                     document.getElementById('app-screen').classList.remove('hidden');
-                    document.getElementById('terminal-overlay').classList.add('hidden');
                     
-                    document.getElementById('gemini-fab').classList.remove('hidden');
-                    document.getElementById('virtual-keyboard').classList.remove('hidden');
-                    
-                    term.clear();
-                    setTimeout(() => {
-                        fitAddon.fit();
-                        ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
-                        ws.send(JSON.stringify({ type: 'request_sessions', tab: currentTab }));
-                        ws.send(JSON.stringify({ type: 'request_models' })); // Tarik pilihan Model AI
-                    }, 100);
+                    if (currentTab === 'github') {
+                        // Jika di tab GitHub, pancing load Repo
+                        ghLoadRepos();
+                    } else {
+                        // Mode Terminal Biasa
+                        document.getElementById('terminal-overlay').classList.add('hidden');
+                        document.getElementById('gemini-fab').classList.remove('hidden');
+                        document.getElementById('virtual-keyboard').classList.remove('hidden');
+                        
+                        term.clear();
+                        setTimeout(() => {
+                            fitAddon.fit();
+                            ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }));
+                            ws.send(JSON.stringify({ type: 'request_sessions', tab: currentTab }));
+                            ws.send(JSON.stringify({ type: 'request_models' })); // Tarik pilihan Model AI
+                        }, 100);
+                    }
 
                     pingInterval = setInterval(() => {
                         if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
@@ -484,11 +488,6 @@
                         const data = JSON.parse(event.data);
                         if(data.type === 'status_update') updateVPSStatus(data.vps1, data.vps2, data.vps3);
                         else if(data.type === 'terminal_output') term.write(data.data);
-                        else if(data.type === 'git_output') {
-                            const gitLog = document.getElementById('git-log');
-                            gitLog.innerText += "\n" + data.data;
-                            gitLog.scrollTop = gitLog.scrollHeight;
-                        }
                         else if(data.type === 'session_list') renderSessionList(data.data);
                         else if(data.type === 'gemini_response') appendGeminiMessage(data.text, 'bot', data.canvasData);
                         else if(data.type === 'model_list') {
@@ -503,6 +502,18 @@
                                 });
                             }
                         }
+                        // GITHUB API RESPONSES
+                        else if(data.type === 'github_repos') renderGhRepos(data.data);
+                        else if(data.type === 'github_files') renderGhFiles(data.repo, data.path, data.data);
+                        else if(data.type === 'github_file_content') openGhEditor(data.data);
+                        else if(data.type === 'github_repo_created') { alert('Berhasil membuat Repository Baru!'); ghLoadRepos(); }
+                        else if(data.type === 'github_file_saved') { 
+                            alert('Perubahan File Berhasil di-Commit ke GitHub!'); 
+                            closeGhEditor(); 
+                            ghLoadFiles(ghCurrentRepo, ghCurrentPath); 
+                        }
+                        else if(data.type === 'github_file_deleted') { ghLoadFiles(ghCurrentRepo, ghCurrentPath); }
+                        else if(data.type === 'github_error') { alert('Gagal: ' + data.message); }
                     } catch (e) { term.write(event.data); }
                 };
 
@@ -532,7 +543,7 @@
 
         // Hardware Keyboard Capture
         term.onData(data => {
-            if (ws && ws.readyState === WebSocket.OPEN) {
+            if (ws && ws.readyState === WebSocket.OPEN && currentTab !== 'github') {
                 let finalData = data;
                 if (ctrlActive && data.length === 1) {
                     const charCode = data.toLowerCase().charCodeAt(0);
@@ -574,7 +585,7 @@
                 document.getElementById('terminal-overlay').classList.add('hidden');
                 document.getElementById('gemini-fab').classList.add('hidden');
                 document.getElementById('virtual-keyboard').classList.add('hidden');
-                if(ws) ws.close();
+                connectWebSocket(); 
             } else {
                 document.getElementById('terminal-container').style.display = 'block';
                 document.getElementById('github-container').classList.add('hidden');
@@ -612,14 +623,16 @@
             });
         }
 
-        // --- UPLOAD & DOWNLOAD ---
+        // --- UPLOAD & DOWNLOAD UTILS ---
         function triggerDownload() {
+            if (currentTab === 'github') {
+                alert("Gunakan antarmuka file di layar untuk manajemen file GitHub.");
+                return;
+            }
             const fileName = prompt(`Masukkan nama file yang ingin diunduh dari ${currentTab.toUpperCase()}:`, "config.py");
             if (fileName && ws && ws.readyState === WebSocket.OPEN) {
                 term.write(`\r\n\x1b[36m[TMA]\x1b[0m Meminta unduhan file: ${fileName}...\r\n`);
                 ws.send(JSON.stringify({ type: 'input', data: `.download ${fileName}\r` }));
-            } else if (currentTab === 'github') {
-                alert("Silakan pindah ke tab Termux/VPS untuk mengunduh file satuan.");
             }
         }
 
@@ -628,6 +641,13 @@
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+            
+            if (currentTab === 'github') {
+                ghHandleFileUpload(file);
+                event.target.value = '';
+                return;
+            }
+
             term.write(`\r\n\x1b[33m[SYSTEM]\x1b[0m Membaca file '${file.name}'...\r\n`);
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -656,35 +676,212 @@
             }
         }
 
-        // --- GITHUB ---
-        function runGit(action) {
-            const gitLog = document.getElementById('git-log');
-            gitLog.innerText += `\n[TMA] Menjalankan git ${action}...`;
-            if(!ws || ws.readyState !== WebSocket.OPEN) {
-                const gitWs = new WebSocket(`wss://${NGROK_URL}/ws?tab=github`);
-                gitWs.onopen = () => {
-                    gitWs.send(JSON.stringify({ type: 'auth', token: secretToken }));
-                    gitWs.send(JSON.stringify({ type: 'git_action', action: action }));
-                };
-                gitWs.onmessage = (e) => {
-                    try {
-                        const data = JSON.parse(e.data);
-                        if(data.type === 'git_output') {
-                            gitLog.innerText += "\n" + data.data;
-                            gitLog.scrollTop = gitLog.scrollHeight;
-                        }
-                    } catch(err) {}
-                };
-            } else {
-                ws.send(JSON.stringify({ type: 'git_action', action: action }));
+        // ==========================================
+        // FITUR GITHUB MANAGER (BARU)
+        // ==========================================
+        let ghCurrentRepo = '';
+        let ghCurrentPath = '';
+        let ghEditingSha = '';
+        let ghEditingPath = '';
+
+        // Safe Base64 Unicode Helpers
+        function encodeToB64(str) {
+            return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
+        }
+        function decodeFromB64(str) {
+            return decodeURIComponent(atob(str).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+        }
+
+        function ghLoadRepos() {
+            ghCurrentRepo = ''; ghCurrentPath = '';
+            document.getElementById('gh-breadcrumb').innerHTML = `<button onclick="ghLoadRepos()" class="hover:text-white flex items-center gap-1"><span>🐙</span> Repositories GitHub</button>`;
+            document.getElementById('gh-actions').innerHTML = `<button onclick="ghCreateRepoPrompt()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold shadow">+ Repo Baru</button>`;
+            document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-gray-500 py-10 animate-pulse font-mono text-sm">🔄 Menghubungkan ke GitHub...</div>';
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'github_list_repos' }));
+        }
+
+        function renderGhRepos(repos) {
+            if(!Array.isArray(repos) || repos.message) {
+                document.getElementById('gh-content-area').innerHTML = `<div class="text-red-500 p-4">Error: ${repos.message || 'Gagal memuat repos'}</div>`;
+                return;
+            }
+            let html = '<div class="grid grid-cols-1 md:grid-cols-2 gap-3 p-2">';
+            repos.forEach(repo => {
+                html += `<div onclick="ghLoadFiles('${repo.name}', '')" class="bg-gray-800/80 p-4 rounded-lg border border-gray-700 hover:border-orange-500 cursor-pointer flex justify-between items-center group transition-colors shadow-sm">
+                    <div class="overflow-hidden">
+                        <div class="text-orange-400 font-bold text-sm flex items-center gap-2 truncate">
+                            📦 ${repo.name} <span class="text-[9px] bg-gray-700 text-gray-300 px-1.5 py-0.5 rounded-full">${repo.private ? 'Private' : 'Public'}</span>
+                        </div>
+                        <div class="text-xs text-gray-400 mt-1 truncate">${repo.description || 'Tidak ada deskripsi.'}</div>
+                    </div>
+                    <span class="text-gray-600 group-hover:text-orange-400 transition-colors ml-2 text-xl">➔</span>
+                </div>`;
+            });
+            html += '</div>';
+            document.getElementById('gh-content-area').innerHTML = html;
+        }
+
+        function ghLoadFiles(repo, path) {
+            ghCurrentRepo = repo; ghCurrentPath = path;
+            
+            let breadcrumbHtml = `<button onclick="ghLoadRepos()" class="hover:text-white text-gray-400 flex items-center gap-1"><span>🐙</span> Repos</button> <span class="text-gray-600">/</span> `;
+            breadcrumbHtml += `<button onclick="ghLoadFiles('${repo}', '')" class="hover:text-white text-orange-400 font-bold px-1">${repo}</button> `;
+            
+            if (path) {
+                const parts = path.split('/');
+                let currentPathBuild = '';
+                parts.forEach((part, index) => {
+                    currentPathBuild += (index === 0 ? '' : '/') + part;
+                    breadcrumbHtml += `<span class="text-gray-600">/</span> <button onclick="ghLoadFiles('${repo}', '${currentPathBuild}')" class="hover:text-white text-gray-300 px-1">${part}</button> `;
+                });
+            }
+            document.getElementById('gh-breadcrumb').innerHTML = breadcrumbHtml;
+            
+            document.getElementById('gh-actions').innerHTML = `<button onclick="document.getElementById('file-uploader').click()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-md text-xs sm:text-sm shadow font-bold flex items-center gap-1">📤 Upload File</button>`;
+            
+            document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-gray-500 py-10 animate-pulse font-mono text-sm">🔄 Membaca isi folder...</div>';
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'github_list_files', repo: repo, path: path }));
+        }
+
+        function renderGhFiles(repo, path, files) {
+            if(!Array.isArray(files)) {
+                let msg = files.message || 'Folder kosong atau gagal diakses.';
+                if(msg === "This repository is empty.") files = [];
+                else {
+                    document.getElementById('gh-content-area').innerHTML = `<div class="text-gray-500 p-4 text-center italic text-sm">${msg}</div>`;
+                    return;
+                }
+            }
+            
+            let html = '<div class="flex flex-col gap-1.5 p-2 font-mono">';
+            
+            if (path) {
+                const parentPath = path.includes('/') ? path.substring(0, path.lastIndexOf('/')) : '';
+                html += `<div onclick="ghLoadFiles('${repo}', '${parentPath}')" class="flex items-center gap-3 p-3 bg-gray-800/40 hover:bg-gray-800 border border-transparent hover:border-gray-700 rounded-lg cursor-pointer text-sm text-gray-300 transition-colors">
+                    <span class="text-xl">🔙</span> <span class="font-bold">Kembali (..)</span>
+                </div>`;
+            }
+
+            if (files.length === 0 && !path) {
+                html += `<div class="text-center text-gray-500 py-10 italic">Repository ini masih kosong. Silakan upload file pertama Bos!</div>`;
+            }
+
+            files.forEach(file => {
+                if(file.type === 'dir') {
+                    html += `<div onclick="ghLoadFiles('${repo}', '${file.path}')" class="flex items-center gap-3 p-3 bg-gray-800/40 hover:bg-gray-800 border border-transparent hover:border-gray-700 rounded-lg cursor-pointer text-sm text-gray-300 transition-colors">
+                        <span class="text-xl">📁</span> <span class="flex-1 font-bold text-blue-400">${file.name}</span>
+                    </div>`;
+                } else {
+                    html += `<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 bg-gray-800/40 hover:bg-gray-800 border border-transparent hover:border-gray-700 rounded-lg text-sm text-gray-300 transition-colors gap-2">
+                        <div class="flex items-center gap-3 cursor-pointer flex-1 w-full" onclick="ghFetchFileContent('${repo}', '${file.path}')">
+                            <span class="text-xl">📄</span> <span class="truncate hover:text-white">${file.name}</span>
+                        </div>
+                        <div class="flex gap-2 w-full sm:w-auto justify-end mt-2 sm:mt-0">
+                            <button onclick="ghFetchFileContent('${repo}', '${file.path}')" class="text-[11px] font-bold bg-gray-700 hover:bg-blue-600 text-white px-3 py-1.5 rounded-md transition-colors flex items-center gap-1">✏️ Edit</button>
+                            <button onclick="ghDeleteFilePrompt('${file.path}', '${file.sha}')" class="text-[11px] font-bold bg-gray-700 hover:bg-red-600 text-white px-3 py-1.5 rounded-md transition-colors flex items-center gap-1">🗑️ Hapus</button>
+                        </div>
+                    </div>`;
+                }
+            });
+            html += '</div>';
+            document.getElementById('gh-content-area').innerHTML = html;
+        }
+
+        function ghCreateRepoPrompt() {
+            const name = prompt("Masukkan nama Repository Baru (Tanpa Spasi):");
+            if(name && ws) {
+                document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-green-500 py-10 animate-pulse font-mono text-sm">🛠️ Membangun Repository...</div>';
+                ws.send(JSON.stringify({ type: 'github_create_repo', name: name.replace(/\s+/g, '-') }));
             }
         }
 
-        // --- GEMINI AI & SMART DIFF CANVAS ---
+        function ghFetchFileContent(repo, path) {
+            if(!ws) return;
+            document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-orange-400 py-10 animate-pulse font-mono text-sm">📦 Menyiapkan Kode dari GitHub...</div>';
+            ws.send(JSON.stringify({ type: 'github_get_file', repo: repo, path: path }));
+        }
+
+        function openGhEditor(fileData) {
+            ghLoadFiles(ghCurrentRepo, ghCurrentPath); 
+
+            if(fileData.encoding === 'base64') {
+                try {
+                    const content = decodeFromB64(fileData.content.replace(/\n/g, ''));
+                    document.getElementById('gh-editor-textarea').value = content;
+                    ghEditingSha = fileData.sha;
+                    ghEditingPath = fileData.path;
+                    document.getElementById('gh-editor-title').innerText = fileData.path;
+                    document.getElementById('gh-editor-modal').classList.remove('hidden');
+                } catch(e) {
+                    alert("Tidak dapat mendekode file ini (Kemungkinan file biner/gambar).");
+                }
+            } else {
+                alert("Encoding file tidak didukung oleh Editor Panel.");
+            }
+        }
+
+        function closeGhEditor() {
+            document.getElementById('gh-editor-modal').classList.add('hidden');
+            document.getElementById('gh-editor-textarea').value = '';
+        }
+
+        function saveGhEditor() {
+            const content = document.getElementById('gh-editor-textarea').value;
+            const b64 = encodeToB64(content);
+            const msg = prompt("Pesan Commit (Wajib):", `Update file ${ghEditingPath}`);
+            if (msg === null) return; // Batal commit
+            
+            document.getElementById('gh-editor-title').innerText = "⏳ Menyimpan Perubahan...";
+            ws.send(JSON.stringify({
+                type: 'github_save_file',
+                repo: ghCurrentRepo,
+                path: ghEditingPath,
+                content: b64,
+                sha: ghEditingSha,
+                message: msg
+            }));
+        }
+
+        function ghDeleteFilePrompt(path, sha) {
+            if(confirm(`AWAS!\nYakin ingin MENGHAPUS file '${path}' secara permanen dari GitHub?`)) {
+                ws.send(JSON.stringify({
+                    type: 'github_delete_file',
+                    repo: ghCurrentRepo,
+                    path: path,
+                    sha: sha
+                }));
+                document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-red-500 py-10 animate-pulse font-mono text-sm">🗑️ Menghapus file...</div>';
+            }
+        }
+
+        function ghHandleFileUpload(file) {
+            if (!ghCurrentRepo) { alert("Pilih Repository dulu Bos sebelum upload!"); return; }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const b64Data = e.target.result.split(',')[1];
+                const uploadPath = ghCurrentPath ? `${ghCurrentPath}/${file.name}` : file.name;
+                
+                const msg = prompt("Pesan Commit untuk file ini:", `Upload ${file.name}`);
+                if (msg !== null) {
+                    ws.send(JSON.stringify({
+                        type: 'github_save_file',
+                        repo: ghCurrentRepo,
+                        path: uploadPath,
+                        content: b64Data,
+                        message: msg
+                    }));
+                    document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-blue-400 py-10 animate-pulse font-mono text-sm">📤 Mengunggah file ke GitHub...</div>';
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // ==========================================
+        // GEMINI AI & SMART DIFF CANVAS
+        // ==========================================
         let currentCanvasPayloads = [];
         let currentCanvasIndex = 0;
-        
-        // Variabel Penampung Memori Undo
         let lastAppliedPayloads = null;
 
         function toggleGeminiChat() {
@@ -877,13 +1074,9 @@
             currentCanvasIndex = 0;
         }
 
-        // =====================================
-        // LOGIKA BARU: APPLY & ROLLBACK MEMORY
-        // =====================================
         function applyGeminiCode() {
             if(!currentCanvasPayloads.length || !ws || ws.readyState !== WebSocket.OPEN) return;
             
-            // Simpan Data Saat Ini ke Memori In-Memory (Deep Copy) untuk keperluan Rollback
             lastAppliedPayloads = JSON.parse(JSON.stringify(currentCanvasPayloads));
             
             ws.send(JSON.stringify({ 
@@ -898,7 +1091,6 @@
                 closeGeminiCanvas();
                 btn.disabled = false;
                 
-                // Memunculkan Pesan Sukses beserta Tombol ROLLBACK di Chat
                 const msgContainer = document.getElementById('gemini-messages');
                 const rollbackId = 'rb-btn-' + Date.now();
                 msgContainer.insertAdjacentHTML('beforeend', `
@@ -919,18 +1111,15 @@
         function rollbackLastAction(btnElement) {
             if (!lastAppliedPayloads || !lastAppliedPayloads.length || !ws || ws.readyState !== WebSocket.OPEN) return;
 
-            // Merakit Payload Kebalikan (Swapping Target/Old dengan Replace/New)
             const rollbackPayloads = lastAppliedPayloads.map(p => {
                 return {
                     filename: p.filename,
                     mode: p.mode || 'full',
-                    // Menukar posisinya secara ajaib!
                     oldCode: p.newCode, 
                     newCode: p.oldCode || '// File ini sebelumnya tidak ada (Dibuat oleh AI).\n// Perintah Rollback dijalankan untuk mengosongkan isi file ini demi keamanan.'
                 };
             });
 
-            // Ubah UI tombol agar tidak ditekan dua kali
             if(btnElement) {
                 btnElement.innerHTML = "⏳ Sedang memulihkan...";
                 btnElement.disabled = true;
@@ -939,13 +1128,11 @@
                 btnElement.classList.remove('border-gray-600');
             }
 
-            // Kirim perintah palsu (yang sebenarnya adalah perintah pemulihan)
             ws.send(JSON.stringify({
                 type: 'gemini_apply_code',
                 payloads: rollbackPayloads
             }));
 
-            // Tampilkan Notifikasi Sukses
             setTimeout(() => {
                 const msgContainer = document.getElementById('gemini-messages');
                 msgContainer.insertAdjacentHTML('beforeend', `
@@ -957,7 +1144,6 @@
                 `);
                 msgContainer.scrollTop = msgContainer.scrollHeight;
                 
-                // Sembunyikan tombol setelah selesai dan kosongkan memori
                 if(btnElement) btnElement.style.display = 'none'; 
                 lastAppliedPayloads = null; 
             }, 1000);
