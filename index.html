@@ -683,6 +683,9 @@
         // --- GEMINI AI & SMART DIFF CANVAS ---
         let currentCanvasPayloads = [];
         let currentCanvasIndex = 0;
+        
+        // Variabel Penampung Memori Undo
+        let lastAppliedPayloads = null;
 
         function toggleGeminiChat() {
             const modal = document.getElementById('gemini-chat-modal');
@@ -709,7 +712,6 @@
             document.getElementById('gemini-messages').scrollTop = document.getElementById('gemini-messages').scrollHeight;
             
             if (ws && ws.readyState === WebSocket.OPEN) {
-                // Menambahkan pengiriman data Mode (Full atau Block)
                 ws.send(JSON.stringify({ type: 'gemini_chat', text: text, model: selectedModel, mode: selectedMode }));
             }
         }
@@ -730,7 +732,6 @@
             `);
 
             if(canvasData) {
-                // Konversi menjadi array jika server mengirim objek tunggal (Legacy support)
                 const payloads = Array.isArray(canvasData) ? canvasData : [canvasData];
                 const validPayloads = payloads.filter(p => p && p.filename && p.newCode);
                 
@@ -784,7 +785,6 @@
             const data = currentCanvasPayloads[currentCanvasIndex];
             document.getElementById('canvas-filename').innerText = data.filename;
             
-            // Pengaturan UI Navigasi Multi-file
             const navEl = document.getElementById('canvas-nav');
             if (currentCanvasPayloads.length > 1) {
                 navEl.classList.remove('hidden');
@@ -797,7 +797,6 @@
             const newContainer = document.getElementById('canvas-new-code');
             const btnApply = document.getElementById('btn-apply-code');
             
-            // Menyesuaikan Judul Label berdasarkan Mode (Dikirim dari backend)
             const isBlockMode = data.mode === 'block';
             document.getElementById('canvas-title-old').innerText = isBlockMode ? '🔴 Blok Target (Search)' : '🔴 Kode Asli';
             document.getElementById('canvas-title-new').innerText = isBlockMode ? '🟢 Blok Revisi (Replace)' : '🟢 Kode AI (Revisi)';
@@ -808,7 +807,6 @@
                 oldContainer.innerHTML = '<div class="text-gray-500 italic px-2">// Pembuatan file baru.</div>';
                 newContainer.innerHTML = `<div class="text-green-300 px-2 whitespace-pre">${escapeHtml(data.newCode)}</div>`;
             } else {
-                // Menjalankan algoritma Smart Diff Viewer
                 renderSmartDiff(data.oldCode, data.newCode, oldContainer, newContainer);
             }
         }
@@ -817,31 +815,22 @@
             const diff = Diff.diffLines(oldCode, newCode);
             let oldHtml = '';
             let newHtml = '';
-            
-            // Berapa jumlah baris atas/bawah yang tidak berubah (sebagai konteks)
             const CONTEXT_LINES = 3; 
 
-            // Ekstrak string multiline Diff menjadi array perbaris
             let diffLines = [];
             diff.forEach(part => {
                 const val = part.value.endsWith('\n') ? part.value.slice(0, -1) : part.value;
                 const lines = val.split('\n');
                 lines.forEach(line => {
-                    diffLines.push({
-                        text: line,
-                        added: part.added,
-                        removed: part.removed
-                    });
+                    diffLines.push({ text: line, added: part.added, removed: part.removed });
                 });
             });
 
-            // Cari index baris yang berubah
             let changedIndices = [];
             diffLines.forEach((line, index) => {
                 if (line.added || line.removed) changedIndices.push(index);
             });
 
-            // Tentukan indeks baris mana saja yang perlu dirender (Berubah + Konteks sekitarnya)
             let visibleLines = new Set();
             changedIndices.forEach(idx => {
                 for (let i = Math.max(0, idx - CONTEXT_LINES); i <= Math.min(diffLines.length - 1, idx + CONTEXT_LINES); i++) {
@@ -853,27 +842,22 @@
 
             diffLines.forEach((line, index) => {
                 if (visibleLines.has(index)) {
-                    // Jika ada lompatan nomor baris, berikan tanda separator pemisah
                     if (lastVisible !== -1 && index > lastVisible + 1) {
                         const hiddenCount = index - lastVisible - 1;
                         const sep = `<div class="text-gray-600 bg-gray-800/50 text-center text-[10px] sm:text-xs py-1 my-1 border-y border-gray-700 select-none">--- ${hiddenCount} baris disembunyikan ---</div>`;
-                        oldHtml += sep;
-                        newHtml += sep;
+                        oldHtml += sep; newHtml += sep;
                     }
                     
                     const safeText = escapeHtml(line.text) || ' '; 
                     
-                    // Pisahkan output ke Kontainer Lama (Removed) dan Kontainer Baru (Added)
                     if (line.removed) {
                         oldHtml += `<div class="bg-red-900/60 text-red-200 px-2 block">${safeText}</div>`;
                     } else if (line.added) {
                         newHtml += `<div class="bg-green-900/60 text-green-200 px-2 block">${safeText}</div>`;
                     } else {
-                        // Jika baris normal, tulis di kedua kontainer
                         oldHtml += `<div class="text-gray-400 px-2 block">${safeText}</div>`;
                         newHtml += `<div class="text-gray-400 px-2 block">${safeText}</div>`;
                     }
-                    
                     lastVisible = index;
                 }
             });
@@ -893,10 +877,15 @@
             currentCanvasIndex = 0;
         }
 
+        // =====================================
+        // LOGIKA BARU: APPLY & ROLLBACK MEMORY
+        // =====================================
         function applyGeminiCode() {
             if(!currentCanvasPayloads.length || !ws || ws.readyState !== WebSocket.OPEN) return;
             
-            // Kirim seluruh array payload agar dieksekusi bersamaan di backend
+            // Simpan Data Saat Ini ke Memori In-Memory (Deep Copy) untuk keperluan Rollback
+            lastAppliedPayloads = JSON.parse(JSON.stringify(currentCanvasPayloads));
+            
             ws.send(JSON.stringify({ 
                 type: 'gemini_apply_code', 
                 payloads: currentCanvasPayloads 
@@ -908,8 +897,70 @@
             setTimeout(() => {
                 closeGeminiCanvas();
                 btn.disabled = false;
-                appendGeminiMessage(`✅ Berhasil! ${currentCanvasPayloads.length} File telah di-overwrite di server.`, 'bot', null);
+                
+                // Memunculkan Pesan Sukses beserta Tombol ROLLBACK di Chat
+                const msgContainer = document.getElementById('gemini-messages');
+                const rollbackId = 'rb-btn-' + Date.now();
+                msgContainer.insertAdjacentHTML('beforeend', `
+                    <div class="flex justify-start">
+                        <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none max-w-[85%] text-gray-200 shadow-sm">
+                            ✅ Berhasil! <span class="text-green-400 font-bold">${lastAppliedPayloads.length} File</span> telah di-update di server.<br><br>
+                            <button id="${rollbackId}" onclick="rollbackLastAction(this)" class="w-full text-left bg-gray-700 hover:bg-gray-600 border border-gray-600 text-gray-300 font-bold px-3 py-2 rounded-lg text-xs shadow transition-colors flex justify-between items-center">
+                                <span>⏪ Undo (Rollback Revisi)</span>
+                                <span>↺</span>
+                            </button>
+                        </div>
+                    </div>
+                `);
+                msgContainer.scrollTop = msgContainer.scrollHeight;
             }, 800);
+        }
+
+        function rollbackLastAction(btnElement) {
+            if (!lastAppliedPayloads || !lastAppliedPayloads.length || !ws || ws.readyState !== WebSocket.OPEN) return;
+
+            // Merakit Payload Kebalikan (Swapping Target/Old dengan Replace/New)
+            const rollbackPayloads = lastAppliedPayloads.map(p => {
+                return {
+                    filename: p.filename,
+                    mode: p.mode || 'full',
+                    // Menukar posisinya secara ajaib!
+                    oldCode: p.newCode, 
+                    newCode: p.oldCode || '// File ini sebelumnya tidak ada (Dibuat oleh AI).\n// Perintah Rollback dijalankan untuk mengosongkan isi file ini demi keamanan.'
+                };
+            });
+
+            // Ubah UI tombol agar tidak ditekan dua kali
+            if(btnElement) {
+                btnElement.innerHTML = "⏳ Sedang memulihkan...";
+                btnElement.disabled = true;
+                btnElement.classList.replace('bg-gray-700', 'bg-gray-800');
+                btnElement.classList.replace('hover:bg-gray-600', 'hover:bg-gray-800');
+                btnElement.classList.remove('border-gray-600');
+            }
+
+            // Kirim perintah palsu (yang sebenarnya adalah perintah pemulihan)
+            ws.send(JSON.stringify({
+                type: 'gemini_apply_code',
+                payloads: rollbackPayloads
+            }));
+
+            // Tampilkan Notifikasi Sukses
+            setTimeout(() => {
+                const msgContainer = document.getElementById('gemini-messages');
+                msgContainer.insertAdjacentHTML('beforeend', `
+                    <div class="flex justify-start">
+                        <div class="bg-gray-800 border border-gray-700 p-3 rounded-lg rounded-tl-none max-w-[85%] text-gray-200 italic shadow-sm">
+                            ⏪ Operasi Rollback berhasil! File telah dikembalikan ke kondisi persis seperti sebelum AI melakukan perubahan.
+                        </div>
+                    </div>
+                `);
+                msgContainer.scrollTop = msgContainer.scrollHeight;
+                
+                // Sembunyikan tombol setelah selesai dan kosongkan memori
+                if(btnElement) btnElement.style.display = 'none'; 
+                lastAppliedPayloads = null; 
+            }, 1000);
         }
     </script>
 </body>
