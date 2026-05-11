@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -436,9 +437,17 @@
             }
         }
 
-        // Hardware Keyboard Capture
+        // Hardware Keyboard Capture & Auto-Response Filter
         term.onData(data => {
             if (ws && ws.readyState === WebSocket.OPEN && currentTab !== 'github') {
+                
+                // --- FIX BUG KODE ANEH (1;2c0;276;0c) ---
+                // Saat ganti tab/reload, history tmux memicu terminal (xterm) untuk otomatis membalas 
+                // dengan Device Attributes. Kita blokir agar balasan ini tidak bocor ke Terminal Linux.
+                if (typeof data === 'string' && /^(?:\x1b\[[>?][0-9;]*c)+$/.test(data)) {
+                    return; 
+                }
+
                 let finalData = data;
                 if (ctrlActive && data.length === 1) {
                     const charCode = data.toLowerCase().charCodeAt(0);
@@ -448,6 +457,7 @@
                     finalData = '\x1b' + data; 
                     toggleAlt();
                 }
+                
                 ws.send(JSON.stringify({ type: 'input', data: finalData }));
             }
         });
@@ -517,19 +527,19 @@
             });
         }
 
-        // --- UPLOAD & DOWNLOAD UTILS (RCLONE UPDATE) ---
+        // --- UPLOAD & DOWNLOAD UTILS (FIX JALUR API KHUSUS) ---
         function triggerDownload() {
             if (currentTab === 'github') {
                 alert("Gunakan antarmuka file di layar untuk manajemen file GitHub.");
                 return;
             }
             
-            // Text Prompts diubah untuk menjelaskan bahwa ini Sync GDrive
-            const fileName = prompt(`[SINKRONISASI GOOGLE DRIVE]\nMasukkan nama File atau Folder yang ada di direktori aktif ${currentTab.toUpperCase()}:`, "Termin");
+            // Default popup sudah dikosongkan agar tidak rawan bocor
+            const fileName = prompt(`[SINKRONISASI GOOGLE DRIVE]\nMasukkan nama File/Folder yang ingin disinkron dari ${currentTab.toUpperCase()}:`, "");
             
             if (fileName && ws && ws.readyState === WebSocket.OPEN) {
-                term.write(`\r\n\x1b[36m[TMA]\x1b[0m Memulai proses Rclone Sinkronisasi untuk: ${fileName}...\r\n`);
-                ws.send(JSON.stringify({ type: 'input', data: `.download ${fileName}\r` }));
+                // Gunakan protokol khusus (sync_gdrive), TIDAK lagi menumpang perintah '.download' di terminal
+                ws.send(JSON.stringify({ type: 'sync_gdrive', filename: fileName.trim(), tab: currentTab }));
             }
         }
 
@@ -789,3 +799,5 @@
     </script>
 </body>
 </html>
+
+```
