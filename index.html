@@ -602,7 +602,7 @@
             ghCurrentRepo = ''; ghCurrentPath = ''; ghCurrentFilesData = [];
             document.getElementById('gh-breadcrumb').innerHTML = `<button onclick="ghLoadRepos()" class="hover:text-white flex items-center gap-1"><span>🐙</span> Repositories GitHub</button>`;
             document.getElementById('gh-actions').innerHTML = `<button onclick="ghCreateRepoPrompt()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold shadow">+ Repo Baru</button>`;
-            document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-gray-500 py-10 animate-pulse font-mono text-sm">🔄 Menghubungkan ke GitHub...</div>';
+            document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-gray-500 py-10 animate-pulse font-mono text-sm">🔄 Menhubungkan ke GitHub...</div>';
             if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'github_list_repos' }));
         }
 
