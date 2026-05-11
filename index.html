@@ -77,7 +77,7 @@
             <!-- Kanan: Upload & Download -->
             <div class="flex gap-2 shrink-0 ml-2">
                 <button onclick="triggerUpload()" title="Upload File" class="bg-blue-600/80 hover:bg-blue-500 text-white p-2 rounded shadow text-sm">📤</button>
-                <button onclick="triggerDownload()" title="Download File" class="bg-green-600/80 hover:bg-green-500 text-white p-2 rounded shadow text-sm">📥</button>
+                <button onclick="triggerDownload()" title="Download / Sync ke GDrive" class="bg-green-600/80 hover:bg-green-500 text-white p-2 rounded shadow text-sm">📥</button>
             </div>
             
             <input type="file" id="file-uploader" class="hidden" onchange="handleFileUpload(event)">
@@ -517,15 +517,18 @@
             });
         }
 
-        // --- UPLOAD & DOWNLOAD UTILS ---
+        // --- UPLOAD & DOWNLOAD UTILS (RCLONE UPDATE) ---
         function triggerDownload() {
             if (currentTab === 'github') {
                 alert("Gunakan antarmuka file di layar untuk manajemen file GitHub.");
                 return;
             }
-            const fileName = prompt(`Masukkan nama file yang ingin diunduh dari ${currentTab.toUpperCase()}:`, "config.py");
+            
+            // Text Prompts diubah untuk menjelaskan bahwa ini Sync GDrive
+            const fileName = prompt(`[SINKRONISASI GOOGLE DRIVE]\nMasukkan nama File atau Folder yang ada di direktori aktif ${currentTab.toUpperCase()}:`, "Termin");
+            
             if (fileName && ws && ws.readyState === WebSocket.OPEN) {
-                term.write(`\r\n\x1b[36m[TMA]\x1b[0m Meminta unduhan file: ${fileName}...\r\n`);
+                term.write(`\r\n\x1b[36m[TMA]\x1b[0m Memulai proses Rclone Sinkronisasi untuk: ${fileName}...\r\n`);
                 ws.send(JSON.stringify({ type: 'input', data: `.download ${fileName}\r` }));
             }
         }
@@ -571,12 +574,13 @@
         }
 
         // ==========================================
-        // FITUR GITHUB MANAGER
+        // FITUR GITHUB MANAGER 
         // ==========================================
         let ghCurrentRepo = '';
         let ghCurrentPath = '';
         let ghEditingSha = '';
         let ghEditingPath = '';
+        let ghCurrentFilesData = [];
 
         function encodeToB64(str) {
             return btoa(encodeURIComponent(str).replace(/%([0-9A-F]{2})/g, (match, p1) => String.fromCharCode('0x' + p1)));
@@ -586,7 +590,7 @@
         }
 
         function ghLoadRepos() {
-            ghCurrentRepo = ''; ghCurrentPath = '';
+            ghCurrentRepo = ''; ghCurrentPath = ''; ghCurrentFilesData = [];
             document.getElementById('gh-breadcrumb').innerHTML = `<button onclick="ghLoadRepos()" class="hover:text-white flex items-center gap-1"><span>🐙</span> Repositories GitHub</button>`;
             document.getElementById('gh-actions').innerHTML = `<button onclick="ghCreateRepoPrompt()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-1.5 rounded-md text-xs sm:text-sm font-bold shadow">+ Repo Baru</button>`;
             document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-gray-500 py-10 animate-pulse font-mono text-sm">🔄 Menghubungkan ke GitHub...</div>';
@@ -639,11 +643,15 @@
         function renderGhFiles(repo, path, files) {
             if(!Array.isArray(files)) {
                 let msg = files.message || 'Folder kosong atau gagal diakses.';
-                if(msg === "This repository is empty.") files = [];
-                else {
+                if(msg === "This repository is empty.") {
+                    files = [];
+                    ghCurrentFilesData = [];
+                } else {
                     document.getElementById('gh-content-area').innerHTML = `<div class="text-gray-500 p-4 text-center italic text-sm">${msg}</div>`;
                     return;
                 }
+            } else {
+                ghCurrentFilesData = files; 
             }
             
             let html = '<div class="flex flex-col gap-1.5 p-2 font-mono">';
@@ -750,20 +758,29 @@
         function ghHandleFileUpload(file) {
             if (!ghCurrentRepo) { alert("Pilih Repository dulu Bos sebelum upload!"); return; }
             
+            const existingFile = ghCurrentFilesData.find(f => f.name === file.name);
+            const fileSha = existingFile ? existingFile.sha : null;
+            
             const reader = new FileReader();
             reader.onload = function(e) {
                 const b64Data = e.target.result.split(',')[1];
                 const uploadPath = ghCurrentPath ? `${ghCurrentPath}/${file.name}` : file.name;
                 
-                const msg = prompt("Pesan Commit untuk file ini:", `Upload ${file.name}`);
+                const promptMsg = fileSha ? `Pesan Commit (Overwrite ${file.name}):` : `Pesan Commit untuk file ini:`;
+                const msg = prompt(promptMsg, `Upload ${file.name}`);
+                
                 if (msg !== null) {
-                    ws.send(JSON.stringify({
+                    const payload = {
                         type: 'github_save_file',
                         repo: ghCurrentRepo,
                         path: uploadPath,
                         content: b64Data,
                         message: msg
-                    }));
+                    };
+                    
+                    if (fileSha) payload.sha = fileSha; 
+
+                    ws.send(JSON.stringify(payload));
                     document.getElementById('gh-content-area').innerHTML = '<div class="text-center text-blue-400 py-10 animate-pulse font-mono text-sm">📤 Mengunggah file ke GitHub...</div>';
                 }
             };
